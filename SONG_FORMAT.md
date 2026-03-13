@@ -1,0 +1,46 @@
+# Song-Dateiformat
+
+Songdateien liegen im Verzeichnis `songs/` und verwenden JSON.
+
+## Struktur
+
+```json
+{
+  "name": "Stadtfahrt",
+  "musicians": ["Gregor", "Ali", "Frank"],
+  "segments": [
+    {
+      "name": "Intro",
+      "measures": 4,
+      "timeSignature": "4/4",
+      "tonart": "C-Dur",
+      "tempo": 120,
+      "gregorRole": "Harmonie",
+      "aliRole": "Solo",
+      "frankRole": "Beat",
+      "instructions": {
+        "all": ["Ruhig beginnen", "Viel Raum lassen"],
+        "Gregor": ["Nur lange Töne"],
+        "Ali": ["Kurze Einwürfe"],
+        "Frank": ["Nur punktuelle Akzente"]
+      }
+    }
+  ]
+}
+```
+
+## Hinweise
+
+- `name`: Anzeigename des Songs.
+- `musicians`: Namen der Musiker; steuern Rollen-Spuren und individuelle Anweisungsbereiche.
+- `segments`: Liste der Songsegmente.
+- Pro Segment bleiben musikalische Basisdaten erhalten (`measures`, `timeSignature`, `tonart`, `tempo`, Rollenfelder).
+- `instructions.all`: globale Anweisungen für alle.
+- `instructions.<Musikername>`: individuelle Anweisungen passend zu `musicians`.
+
+## Technische Umsetzung
+
+- Der Server liest alle `*.json` aus `songs/` ein und stellt sie über `GET /api/songs` bereit.
+- Der aktuell aktive Song wird serverseitig zentral gehalten.
+- Songwechsel erfolgen per WebSocket (`selectSong`) und werden an alle Clients broadcastet (`songChanged`).
+- Bei Segmentwechsel sendet der Client `segmentChange` mit Segmentname, Tempo, Tonart, Taktart und Anweisungen; der Server kann diese Daten an weitere Systeme (UDP) weiterreichen.
