@@ -2,582 +2,481 @@
 <html lang="de">
 <head>
   <meta charset="UTF-8"/>
-  <title>Timeline mit Segment-Rückmeldung</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Impro Timeline</title>
   <style>
+    :root { color-scheme: dark; }
     body {
-      margin: 0; padding: 0;
-      background: #202020; color: #fff;
+      margin: 0;
+      padding: 12px;
+      background: #202020;
+      color: #fff;
       font-family: sans-serif;
+    }
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .toolbar label { font-size: 18px; font-weight: 700; }
+    .toolbar select {
+      background: #2d2d2d;
+      color: #fff;
+      border: 1px solid #4a4a4a;
+      border-radius: 8px;
+      font-size: 18px;
+      min-height: 44px;
+      padding: 6px 10px;
+      min-width: 220px;
     }
     #canvas {
       display: block;
+      width: 100%;
+      max-width: 1200px;
       margin: 0 auto;
       background: #303030;
     }
   </style>
 </head>
 <body>
-<canvas id="canvas" width="1200" height="700"></canvas>
+<div class="toolbar">
+  <label for="songSelect">Song:</label>
+  <select id="songSelect"></select>
+</div>
+<canvas id="canvas" width="1200" height="620"></canvas>
 
 <script>
-// ------------------------------------------------------
-// GLOBALE KONFIG
-
-// Neue Segmente, jetzt mit zusätzlichem Feld 'name'
-let segments = [
-  {
-    name: "Auffahrt",
-    measures: 32,
-    timeSignature: "4/4",
-    tonart: "C-Dur",
-    tempo: 80,
-    dissonanz: 3,
-    komplexitaet: 3,
-    intensitaet: 3,
-    aliRole: "",
-    gregorRole: "Harmonie",
-    frankRole: ""
-  },
-   {
-    name: "Auffahrt_B",
-    measures: 32,
-    timeSignature: "4/4",
-    tonart: "C-Dur",
-    tempo: 80,
-    dissonanz: 3,
-    komplexitaet: 3,
-    intensitaet: 3,
-    aliRole: "",
-    gregorRole: "Harmonie",
-    frankRole: "Solo"
-  },
-  {
-    name: "Autobahn",
-    measures: 128,
-    timeSignature: "4/4",
-    tonart: "E-Dur",
-    tempo: 120,
-    dissonanz: 3,
-    komplexitaet: 5,
-    intensitaet: 7,
-    aliRole: "Solo",
-    gregorRole: "Harmonie",
-    frankRole: "Beat"
-  },
-  {
-    name: "Unfall",
-    measures: 128,
-    timeSignature: "4/4",
-    tonart: "F-Dur",
-    tempo: 60,
-    dissonanz: 8,
-    komplexitaet: 6,
-    intensitaet: 10,
-    aliRole: "Solo",
-    gregorRole: "Harmonie",
-    frankRole: "Beat"
-  },
-    {
-    name: "Himmel",
-    measures: 64,
-    timeSignature: "4/4",
-    tonart: "F-Moll",
-    tempo: 80,
-    dissonanz: 1,
-    komplexitaet: 1,
-    intensitaet: 5,
-    aliRole: "Beat",
-    gregorRole: "Solo",
-    frankRole: "Harmonie"
-  }
-];
-
-// Ticks pro Schlag
 const TICKS_PER_BEAT = 24;
-
-// Dimensionen
-const TRACK_HEIGHT_ROLES  = 30;
-const TRACK_HEIGHT_PARAMS = 30;
-const TRACK_GAP           = 20;
-const LEFT_MARGIN         = 150;
-const RIGHT_MARGIN        = 50;
-let pixelsPerTick         = 0.1;
-const PLAYHEAD_FRACTION   = 1/4;
-
-// Overview
-const OVERVIEW_TOP        = 120;
-const OVERVIEW_HEIGHT     = 10;
-const OVERVIEW_LEFT_MARGIN  = 50;
+const TRACK_GAP = 14;
+const LEFT_MARGIN = 150;
+const RIGHT_MARGIN = 40;
+const PLAYHEAD_FRACTION = 1 / 4;
+const OVERVIEW_TOP = 90;
+const OVERVIEW_HEIGHT = 10;
+const OVERVIEW_LEFT_MARGIN = 50;
 const OVERVIEW_RIGHT_MARGIN = 50;
+const MARGIN_COLOR = '#303030';
+const BACKGROUND_COLOR = '#202020';
 
-const MARGIN_COLOR = "#303030";
-const BACKGROUND_COLOR = "#202020";
+const LINE_HEIGHT = 21;
+const TRACK_PADDING_TOP = 10;
+const TRACK_PADDING_BOTTOM = 8;
+const TRACK_MIN_HEIGHT = 56;
 
-// Farben
-const COLOR_HARMONIE = "rgb(0,200,0)";
-const COLOR_SOLO     = "rgb(255,0,0)";
-const COLOR_BEAT     = "rgb(255,255,0)";
+// Einstellbar: Wie viele Takte im sichtbaren Timeline-Ausschnitt gezeigt werden
+const VISIBLE_WINDOW_MEASURES = 16;
 
-const COLOR_KOMPLEX     = "rgb(128,0,128)";
-const COLOR_DISSONANZ   = "rgb(0,0,255)";
-const COLOR_INTENSITAET = "rgb(255,128,0)";
-
-// Falls true: Höhe der Säule ~ Parameterwert
-let useHeightForParam = false;
-
-// GLOBALE VARS
-let canvas, ctx;
-let processedSegments = [];
-let currentTick = 0;
+let canvas;
+let ctx;
+let songSelect;
 let ws;
 
-// Um Segmentwechsel zu erkennen
+let availableSongs = [];
+let selectedSongId = null;
+let currentSong = null;
+let processedSegments = [];
+let trackDefs = [];
+let currentTick = 0;
 let lastSegmentIndex = -1;
+let pixelsPerTick = 0.1;
 
-// ------------------------------------------------------
-// SETUP
+window.addEventListener('load', async () => {
+  canvas = document.getElementById('canvas');
+  ctx = canvas.getContext('2d');
+  songSelect = document.getElementById('songSelect');
 
-window.addEventListener("load", () => {
-  canvas = document.getElementById("canvas");
-  ctx = canvas.getContext("2d");
+  songSelect.addEventListener('change', () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: 'selectSong', data: { songId: songSelect.value } }));
+  });
 
-  prepareSegments();
-
-  // WebSocket
-  let wsUrl = "ws://" + window.location.hostname + ":8080";
-  ws = new WebSocket(wsUrl);
-
-  ws.onopen = () => {
-    console.log("WebSocket mit", wsUrl, "verbunden.");
-  };
-
-  // Tick-Daten vom Server (UDP→WS)
-  ws.onmessage = (event) => {
-    let msg = event.data.trim().replace(";", "");
-    let val = parseInt(msg, 10);
-    if(!isNaN(val)) {
-      currentTick = val;
-    }
-  };
-
-  ws.onerror = (err) => console.error("WS-Fehler", err);
-
+  await loadSongs();
+  connectWebSocket();
   requestAnimationFrame(render);
 });
 
-// ------------------------------------------------------
-// SEGMENTE-Aufbereitung
+async function loadSongs() {
+  try {
+    const response = await fetch('/api/songs');
+    const data = await response.json();
+    applyState(data);
+  } catch (error) {
+    console.error('Songs konnten nicht geladen werden:', error);
+  }
+}
 
-function prepareSegments(){
+function connectWebSocket() {
+  const wsUrl = `ws://${window.location.hostname}:8080`;
+  ws = new WebSocket(wsUrl);
+  ws.onopen = () => console.log('WebSocket verbunden:', wsUrl);
+
+  ws.onmessage = (event) => {
+    try {
+      handleWsMessage(JSON.parse(event.data));
+      return;
+    } catch (_ignored) {
+      const fallbackTick = parseInt(String(event.data).trim().replace(';', ''), 10);
+      if (!Number.isNaN(fallbackTick)) currentTick = fallbackTick;
+    }
+  };
+
+  ws.onerror = (err) => console.error('WS-Fehler', err);
+}
+
+function handleWsMessage(msg) {
+  if (msg.type === 'tick') {
+    if (typeof msg.data?.tick === 'number') currentTick = msg.data.tick;
+    return;
+  }
+
+  if (msg.type === 'state' || msg.type === 'songChanged') {
+    applyState(msg.data);
+  }
+}
+
+function applyState(data) {
+  availableSongs = Array.isArray(data.songs) ? data.songs : [];
+  selectedSongId = data.currentSongId || null;
+  currentSong = data.currentSong || null;
+
+  updateSongSelect();
+  if (typeof data.latestTick === 'number') currentTick = data.latestTick;
+
+  prepareSegments();
+  lastSegmentIndex = -1;
+}
+
+function updateSongSelect() {
+  const existingValue = songSelect.value;
+  songSelect.innerHTML = '';
+  for (const song of availableSongs) {
+    const option = document.createElement('option');
+    option.value = song.id;
+    option.textContent = song.name;
+    songSelect.appendChild(option);
+  }
+  songSelect.value = selectedSongId || existingValue;
+}
+
+function getMusicians() {
+  if (!currentSong || !Array.isArray(currentSong.musicians) || currentSong.musicians.length === 0) {
+    return ['Gregor', 'Ali', 'Frank'];
+  }
+  return currentSong.musicians;
+}
+
+function getTrackDefs() {
+  return [{ label: 'Alle', key: 'all' }, ...getMusicians().map((name) => ({ label: name, key: name }))];
+}
+
+function prepareSegments() {
   processedSegments = [];
+  trackDefs = getTrackDefs();
+  if (!currentSong || !Array.isArray(currentSong.segments)) return;
+
   let startTick = 0;
   let cumulativeStartMeasure = 0;
 
-  for(let i=0; i<segments.length; i++){
-    let obj = segments[i];
-    let beatsPerMeasure = parseTimeSignatureBeats(obj.timeSignature);
-    let segLenInTicks = obj.measures * beatsPerMeasure * TICKS_PER_BEAT;
+  for (let i = 0; i < currentSong.segments.length; i++) {
+    const obj = currentSong.segments[i];
+    const beatsPerMeasure = parseTimeSignatureBeats(obj.timeSignature);
+    const segLenInTicks = obj.measures * beatsPerMeasure * TICKS_PER_BEAT;
 
-    let s = {
-      // Neu: name
-      name: obj.name || ("Segment"+(i+1)),
-      measures: obj.measures,
-      timeSignature: obj.timeSignature,
-      tonart: obj.tonart,
-      tempo: obj.tempo,
-      dissonanz: obj.dissonanz,
-      komplexitaet: obj.komplexitaet,
-      intensitaet: obj.intensitaet,
-      gregorRole: obj.gregorRole,
-      aliRole: obj.aliRole,
-      frankRole: obj.frankRole,
-
-      startTick: startTick,
-      endTick: startTick+segLenInTicks,
-      absoluteStartMeasure: cumulativeStartMeasure
-    };
-
-    processedSegments.push(s);
+    processedSegments.push({
+      ...obj,
+      name: obj.name || `Segment${i + 1}`,
+      instructions: normalizeInstructions(obj.instructions),
+      startTick,
+      endTick: startTick + segLenInTicks,
+      absoluteStartMeasure: cumulativeStartMeasure,
+    });
 
     startTick += segLenInTicks;
     cumulativeStartMeasure += obj.measures;
   }
 }
 
-// ------------------------------------------------------
-// RENDER-LOOP
-
-function render(){
-  // Hintergrund
-  ctx.fillStyle = BACKGROUND_COLOR;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-
-  // Zeit
-  let elapsedSec = computeElapsedTimeSec(currentTick);
-  let mm = Math.floor(elapsedSec/60);
-  let ss = Math.floor(elapsedSec%60);
-  let timeStr = pad2(mm)+":"+pad2(ss);
-
-  // Aktuelles Segment
-  let info = getCurrentSegmentInfo(currentTick);
-  let measureInfo = "Takt: " + info.currentMeasure +
-    "   Zählzeit: " + info.currentBeat +
-    "   Taktart: " + info.currTimeSig +
-    "   Tonart: " + info.currTonart +
-    "   Tempo: " + info.currTempo + " BPM" +
-    "   Zeit: " + timeStr;
-  ctx.fillStyle="#fff";
-  ctx.font="18px sans-serif";
-  ctx.textAlign="left";
-  ctx.fillText(measureInfo, 20,20);
-
-  drawLegend(20,50);
-  drawOverviewTrack();
-
-  // Scroll
-  let tw = canvas.width - LEFT_MARGIN - RIGHT_MARGIN;
-  let playheadX = LEFT_MARGIN + tw*PLAYHEAD_FRACTION;
-  let scrollBaseTick = currentTick - (playheadX-LEFT_MARGIN)/pixelsPerTick;
-
-  // Spuren
-  let startY = OVERVIEW_TOP+40;
-  let nextY  = startY;
-
-  let totalTracksHeight = 3*(TRACK_HEIGHT_ROLES+TRACK_GAP)+
-                          3*(TRACK_HEIGHT_PARAMS+TRACK_GAP)-TRACK_GAP;
-
-  drawMeasureGrid(scrollBaseTick, startY, startY + totalTracksHeight);
-
-  // Gregor
-  drawRoleBars(scrollBaseTick, nextY, TRACK_HEIGHT_ROLES, "gregorRole");
-  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_ROLES);
-  drawTrackLabel("Gregor", 20, nextY+TRACK_HEIGHT_ROLES-2);
-  nextY+= TRACK_HEIGHT_ROLES+TRACK_GAP;
-
-  // Ali
-  drawRoleBars(scrollBaseTick, nextY, TRACK_HEIGHT_ROLES, "aliRole");
-  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_ROLES);
-  drawTrackLabel("Ali", 20, nextY+TRACK_HEIGHT_ROLES-2);
-  nextY+= TRACK_HEIGHT_ROLES+TRACK_GAP;
-
-  // Frank
-  drawRoleBars(scrollBaseTick, nextY, TRACK_HEIGHT_ROLES, "frankRole");
-  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_ROLES);
-  drawTrackLabel("Frank", 20, nextY+TRACK_HEIGHT_ROLES-2);
-  nextY+= TRACK_HEIGHT_ROLES+TRACK_GAP;
-
-  // Komplexität
-  drawParamColumnSingleColor(scrollBaseTick, nextY, TRACK_HEIGHT_PARAMS, "komplexitaet");
-  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_PARAMS);
-  drawTrackLabel("Komplexität", 20, nextY+TRACK_HEIGHT_PARAMS/2);
-  nextY+= TRACK_HEIGHT_PARAMS+TRACK_GAP;
-
-  // Dissonanz
-  drawParamColumnSingleColor(scrollBaseTick, nextY, TRACK_HEIGHT_PARAMS, "dissonanz");
-  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_PARAMS);
-  drawTrackLabel("Dissonanz", 20, nextY+TRACK_HEIGHT_PARAMS/2);
-  nextY+= TRACK_HEIGHT_PARAMS+TRACK_GAP;
-
-  // Intensität
-  drawParamColumnSingleColor(scrollBaseTick, nextY, TRACK_HEIGHT_PARAMS, "intensitaet");
-  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_PARAMS);
-  drawTrackLabel("Intensität", 20, nextY+TRACK_HEIGHT_PARAMS/2);
-  nextY+= TRACK_HEIGHT_PARAMS+TRACK_GAP;
-
-  drawPlayhead(playheadX);
-
-  // Ermittlung, in welchem Segment wir aktuell sind
-  let idx = getSegmentIndex(currentTick);
-  if(idx>=0 && idx!==lastSegmentIndex){
-    // => Segmentwechsel
-    let s = processedSegments[idx];
-    console.log("Segment-Wechsel:", s.name);
-    // Per WebSocket an Server schicken
-    if(ws && ws.readyState===WebSocket.OPEN){
-      let payload = {
-        type: "segmentChange",
-        data: {
-          name: s.name,
-          tempo: s.tempo,
-          tonart: s.tonart,
-          timeSignature: s.timeSignature,
-          dissonanz: s.dissonanz,
-          komplexitaet: s.komplexitaet,
-          intensitaet: s.intensitaet
-        }
-      };
-      ws.send(JSON.stringify(payload));
-    }
-    lastSegmentIndex= idx;
+function normalizeInstructions(instructions) {
+  const safe = instructions && typeof instructions === 'object' ? instructions : {};
+  const normalized = { ...safe };
+  if (!Array.isArray(normalized.all)) normalized.all = [];
+  for (const musician of getMusicians()) {
+    if (!Array.isArray(normalized[musician])) normalized[musician] = [];
   }
-
-  requestAnimationFrame(render);
+  return normalized;
 }
 
-// ------------------------------------------------------
-// HILFSFUNKTIONEN
+function getInstructionLines(segment, trackKey) {
+  if (!segment || !segment.instructions) return [];
+  const list = segment.instructions[trackKey];
+  return Array.isArray(list) ? list : [];
+}
 
-function parseTimeSignatureBeats(ts){
-  let parts= ts.split("/");
-  if(parts.length===2){
-    let n= parseInt(parts[0],10);
-    if(!isNaN(n)) return n;
+function getTrackHeight(trackDef) {
+  let maxLines = 1;
+  for (const segment of processedSegments) {
+    maxLines = Math.max(maxLines, getInstructionLines(segment, trackDef.key).length || 1);
+  }
+  return Math.max(TRACK_MIN_HEIGHT, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + (maxLines * LINE_HEIGHT));
+}
+
+function getCurrentBeatsPerMeasure() {
+  const idx = getSegmentIndex(currentTick);
+  if (idx >= 0) {
+    return parseTimeSignatureBeats(processedSegments[idx].timeSignature);
   }
   return 4;
 }
 
-function getMaxTick(){
-  if(processedSegments.length===0) return 0;
-  return processedSegments[processedSegments.length-1].endTick;
+function updateHorizontalScale() {
+  const timelineWidth = canvas.width - LEFT_MARGIN - RIGHT_MARGIN;
+  const beatsPerMeasure = getCurrentBeatsPerMeasure();
+  const visibleTicks = Math.max(1, VISIBLE_WINDOW_MEASURES * beatsPerMeasure * TICKS_PER_BEAT);
+  pixelsPerTick = timelineWidth / visibleTicks;
 }
 
-function clamp(v,min,max){ return Math.max(min, Math.min(max,v)); }
-
-function mapVal(value,inMin,inMax,outMin,outMax){
-  if(inMax===inMin) return outMin;
-  return outMin + ((value-inMin)/(inMax-inMin))*(outMax-outMin);
+function parseTimeSignatureBeats(ts) {
+  const parts = String(ts || '').split('/');
+  if (parts.length === 2) {
+    const n = parseInt(parts[0], 10);
+    if (!Number.isNaN(n)) return n;
+  }
+  return 4;
 }
 
-function tickToX(tick,scrollBaseTick){
-  return LEFT_MARGIN + (tick-scrollBaseTick)*pixelsPerTick;
-}
-
-function getRoleColor(role){
-  let r= role.toLowerCase();
-  if(r==="harmonie") return COLOR_HARMONIE;
-  if(r==="solo")     return COLOR_SOLO;
-  if(r==="beat")     return COLOR_BEAT;
-  return "rgb(150,150,150)";
-}
-
-function getParamBaseColor(paramField){
-  if(paramField==="komplexitaet") return COLOR_KOMPLEX;
-  if(paramField==="dissonanz")    return COLOR_DISSONANZ;
-  return COLOR_INTENSITAET;
-}
-
-function colorWithAlpha(rgbStr, alphaVal){
-  let alphaFloat= alphaVal/255;
-  let inside= rgbStr.substring(rgbStr.indexOf("(")+1, rgbStr.indexOf(")"));
-  return "rgba("+inside+","+alphaFloat.toFixed(2)+")";
-}
-
-// Zeit aus BPM + Ticks
-function computeElapsedTimeSec(upToTick){
-  let totalSec=0;
-  for(let s of processedSegments){
-    let segStart= s.startTick;
-    let segEnd  = s.endTick;
-    let ticksPerSec= (s.tempo*TICKS_PER_BEAT)/60.0;
-
-    if(upToTick>=segEnd){
-      let segLen= segEnd-segStart;
-      totalSec+= segLen/ticksPerSec;
-    }
-    else if(upToTick>=segStart && upToTick<segEnd){
-      let part= upToTick-segStart;
-      totalSec+= part/ticksPerSec;
+function computeElapsedTimeSec(upToTick) {
+  let totalSec = 0;
+  for (const s of processedSegments) {
+    const ticksPerSec = (s.tempo * TICKS_PER_BEAT) / 60.0;
+    if (upToTick >= s.endTick) {
+      totalSec += (s.endTick - s.startTick) / ticksPerSec;
+    } else if (upToTick >= s.startTick) {
+      totalSec += (upToTick - s.startTick) / ticksPerSec;
       break;
-    }
-    else if(upToTick<segStart){
+    } else {
       break;
     }
   }
   return totalSec;
 }
 
-// Info zum aktuellen Tick
-function getCurrentSegmentInfo(tick){
-  let info= {
-    currentMeasure:0,
-    currentBeat:0,
-    currTimeSig:"",
-    currTonart:"",
-    currTempo:120
-  };
-  for(let s of processedSegments){
-    if(tick>=s.startTick && tick<s.endTick){
-      let localTicks= tick - s.startTick;
-      let beatsPerMeasure= parseTimeSignatureBeats(s.timeSignature);
-      let ticksPerMeasure= beatsPerMeasure*TICKS_PER_BEAT;
-      let measureOffset= Math.floor(localTicks/ticksPerMeasure);
-      let beatOffset   = Math.floor( (localTicks/TICKS_PER_BEAT)%beatsPerMeasure );
+function getCurrentSegmentInfo(tick) {
+  const info = { currentMeasure: 0, currentBeat: 0, currTimeSig: '', currTonart: '', currTempo: 120 };
+  for (const s of processedSegments) {
+    if (tick >= s.startTick && tick < s.endTick) {
+      const localTicks = tick - s.startTick;
+      const beatsPerMeasure = parseTimeSignatureBeats(s.timeSignature);
+      const ticksPerMeasure = beatsPerMeasure * TICKS_PER_BEAT;
+      const measureOffset = Math.floor(localTicks / ticksPerMeasure);
+      const beatOffset = Math.floor((localTicks / TICKS_PER_BEAT) % beatsPerMeasure);
 
-      info.currentMeasure= s.absoluteStartMeasure+ measureOffset+1;
-      info.currentBeat   = beatOffset+1;
-      info.currTimeSig   = s.timeSignature;
-      info.currTonart    = s.tonart;
-      info.currTempo     = s.tempo;
+      info.currentMeasure = s.absoluteStartMeasure + measureOffset + 1;
+      info.currentBeat = beatOffset + 1;
+      info.currTimeSig = s.timeSignature;
+      info.currTonart = s.tonart;
+      info.currTempo = s.tempo;
       return info;
     }
   }
   return info;
 }
 
-// Bestimme Index des aktuellen Segments
-function getSegmentIndex(tick){
-  for(let i=0; i<processedSegments.length; i++){
-    let s= processedSegments[i];
-    if(tick>=s.startTick && tick<s.endTick){
-      return i;
-    }
+function getSegmentIndex(tick) {
+  for (let i = 0; i < processedSegments.length; i++) {
+    const s = processedSegments[i];
+    if (tick >= s.startTick && tick < s.endTick) return i;
   }
   return -1;
 }
 
-// Mop up
-
-function pad2(num){ return (num<10)?("0"+num):(""+num);}
-
-// Zeichnen
-
-function drawLegend(x,y){
-  ctx.font="18px sans-serif";
-  ctx.fillStyle="#fff";
-  // ... wie gehabt ...
-  let boxSize=20, spacing=100;
-  // Harmonie
-  ctx.fillStyle=COLOR_HARMONIE;
-  ctx.fillRect(x,y,boxSize,boxSize);
-  ctx.fillStyle="#fff";
-  ctx.fillText("Harmonie", x+boxSize+5, y+16);
-
-  // Solo
-  ctx.fillStyle=COLOR_SOLO;
-  ctx.fillRect(x+spacing,y,boxSize,boxSize);
-  ctx.fillStyle="#fff";
-  ctx.fillText("Solo", x+spacing+boxSize+5, y+16);
-
-  // Beat
-  ctx.fillStyle=COLOR_BEAT;
-  ctx.fillRect(x+2*spacing,y,boxSize,boxSize);
-  ctx.fillStyle="#fff";
-  ctx.fillText("Beat", x+2*spacing+boxSize+5, y+16);
+function getMaxTick() {
+  if (processedSegments.length === 0) return 0;
+  return processedSegments[processedSegments.length - 1].endTick;
 }
 
-function drawOverviewTrack(){
-  let overviewWidth= canvas.width-OVERVIEW_LEFT_MARGIN-OVERVIEW_RIGHT_MARGIN;
-  let maxTick= getMaxTick();
-  ctx.strokeStyle="#ccc";
-  ctx.lineWidth=2;
-  let yCenter= OVERVIEW_TOP+ OVERVIEW_HEIGHT/2;
-  ctx.beginPath();
-  ctx.moveTo(OVERVIEW_LEFT_MARGIN,yCenter);
-  ctx.lineTo(OVERVIEW_LEFT_MARGIN+overviewWidth,yCenter);
-  ctx.stroke();
+function mapVal(value, inMin, inMax, outMin, outMax) {
+  if (inMax === inMin) return outMin;
+  return outMin + ((value - inMin) / (inMax - inMin)) * (outMax - outMin);
+}
 
-  ctx.textAlign="center";
-  ctx.textBaseline="bottom";
-  ctx.font="14px sans-serif";
-  ctx.fillStyle="#fff";
+function tickToX(tick, scrollBaseTick) {
+  return LEFT_MARGIN + (tick - scrollBaseTick) * pixelsPerTick;
+}
 
-  for(let i=0;i<processedSegments.length;i++){
-    let s= processedSegments[i];
-    let xLine= mapVal(s.startTick,0,maxTick, OVERVIEW_LEFT_MARGIN, OVERVIEW_LEFT_MARGIN+overviewWidth);
-    ctx.strokeStyle="rgb(120,120,120)";
-    ctx.lineWidth=1;
-    ctx.beginPath();
-    ctx.moveTo(xLine,OVERVIEW_TOP);
-    ctx.lineTo(xLine,OVERVIEW_TOP+OVERVIEW_HEIGHT);
-    ctx.stroke();
+function pad2(num) { return num < 10 ? `0${num}` : String(num); }
 
-    ctx.fillText(segments[i].name, xLine, OVERVIEW_TOP-2);
+function render() {
+  const trackHeights = trackDefs.map(getTrackHeight);
+  const tracksHeight = trackHeights.reduce((acc, value) => acc + value, 0) + Math.max(0, (trackDefs.length - 1) * TRACK_GAP);
+  const neededHeight = OVERVIEW_TOP + 60 + tracksHeight + 30;
+  if (canvas.height !== neededHeight) {
+    canvas.height = neededHeight;
   }
 
-  let xCursor= mapVal(currentTick,0,maxTick, OVERVIEW_LEFT_MARGIN, OVERVIEW_LEFT_MARGIN+overviewWidth);
-  ctx.strokeStyle="red";
-  ctx.lineWidth=2;
+  ctx.fillStyle = BACKGROUND_COLOR;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const elapsedSec = computeElapsedTimeSec(currentTick);
+  const mm = Math.floor(elapsedSec / 60);
+  const ss = Math.floor(elapsedSec % 60);
+  const timeStr = `${pad2(mm)}:${pad2(ss)}`;
+
+  const info = getCurrentSegmentInfo(currentTick);
+  const measureInfo = `Takt: ${info.currentMeasure}   Zählzeit: ${info.currentBeat}   Taktart: ${info.currTimeSig}   Tonart: ${info.currTonart}   Tempo: ${info.currTempo} BPM   Zeit: ${timeStr}   Fenster: ${VISIBLE_WINDOW_MEASURES} Takte`;
+  ctx.fillStyle = '#fff';
+  ctx.font = '18px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.fillText(measureInfo, 20, 24);
+
+  drawOverviewTrack();
+  updateHorizontalScale();
+
+  const timelineWidth = canvas.width - LEFT_MARGIN - RIGHT_MARGIN;
+  const playheadX = LEFT_MARGIN + timelineWidth * PLAYHEAD_FRACTION;
+  const scrollBaseTick = currentTick - (playheadX - LEFT_MARGIN) / pixelsPerTick;
+
+  let nextY = OVERVIEW_TOP + 40;
+  drawMeasureGrid(scrollBaseTick, nextY, nextY + tracksHeight);
+
+  for (let i = 0; i < trackDefs.length; i++) {
+    const trackDef = trackDefs[i];
+    const trackHeight = trackHeights[i];
+    drawInstructionTrack(scrollBaseTick, nextY, trackHeight, trackDef);
+    coverLeftRightMarginArea(nextY, nextY + trackHeight);
+    drawTrackLabel(trackDef.label, 20, nextY + trackHeight / 2);
+    nextY += trackHeight + TRACK_GAP;
+  }
+
+  drawPlayhead(playheadX);
+
+  const idx = getSegmentIndex(currentTick);
+  if (idx >= 0 && idx !== lastSegmentIndex) {
+    notifySegmentChange(processedSegments[idx]);
+    lastSegmentIndex = idx;
+  }
+
+  requestAnimationFrame(render);
+}
+
+function notifySegmentChange(segment) {
+  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  ws.send(JSON.stringify({
+    type: 'segmentChange',
+    data: {
+      name: segment.name,
+      tempo: segment.tempo,
+      tonart: segment.tonart,
+      timeSignature: segment.timeSignature,
+      instructions: segment.instructions,
+    },
+  }));
+}
+
+function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef) {
+  for (const s of processedSegments) {
+    const sx = tickToX(s.startTick, scrollBaseTick);
+    const ex = tickToX(s.endTick, scrollBaseTick);
+    if (ex < LEFT_MARGIN || sx > canvas.width - RIGHT_MARGIN) continue;
+
+    ctx.fillStyle = '#171717';
+    ctx.fillRect(sx, trackY, ex - sx, trackHeight);
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(sx, trackY, ex - sx, trackHeight);
+
+    const lines = getInstructionLines(s, trackDef.key);
+    if (lines.length === 0) continue;
+
+    ctx.fillStyle = '#f3f3f3';
+    ctx.font = '17px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    for (let i = 0; i < lines.length; i++) {
+      const textY = trackY + TRACK_PADDING_TOP + (i * LINE_HEIGHT);
+      ctx.fillText(`• ${lines[i]}`, sx + 8, textY, Math.max(40, ex - sx - 16));
+    }
+  }
+}
+
+function drawOverviewTrack() {
+  const overviewWidth = canvas.width - OVERVIEW_LEFT_MARGIN - OVERVIEW_RIGHT_MARGIN;
+  const maxTick = getMaxTick();
+  const yCenter = OVERVIEW_TOP + OVERVIEW_HEIGHT / 2;
+
+  ctx.strokeStyle = '#ccc';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(xCursor, OVERVIEW_TOP-5);
-  ctx.lineTo(xCursor, OVERVIEW_TOP+OVERVIEW_HEIGHT+5);
+  ctx.moveTo(OVERVIEW_LEFT_MARGIN, yCenter);
+  ctx.lineTo(OVERVIEW_LEFT_MARGIN + overviewWidth, yCenter);
+  ctx.stroke();
+
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.font = '13px sans-serif';
+  ctx.fillStyle = '#fff';
+
+  for (const s of processedSegments) {
+    const xLine = mapVal(s.startTick, 0, maxTick || 1, OVERVIEW_LEFT_MARGIN, OVERVIEW_LEFT_MARGIN + overviewWidth);
+    ctx.strokeStyle = 'rgb(120,120,120)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(xLine, OVERVIEW_TOP);
+    ctx.lineTo(xLine, OVERVIEW_TOP + OVERVIEW_HEIGHT);
+    ctx.stroke();
+    ctx.fillText(s.name, xLine, OVERVIEW_TOP - 3);
+  }
+
+  const xCursor = mapVal(currentTick, 0, maxTick || 1, OVERVIEW_LEFT_MARGIN, OVERVIEW_LEFT_MARGIN + overviewWidth);
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(xCursor, OVERVIEW_TOP - 5);
+  ctx.lineTo(xCursor, OVERVIEW_TOP + OVERVIEW_HEIGHT + 5);
   ctx.stroke();
 }
 
-function drawMeasureGrid(scrollBaseTick, topY, bottomY){
-  ctx.strokeStyle="rgb(80,80,80)";
-  ctx.lineWidth=1;
-  let maxTick=getMaxTick();
-  for(let s of processedSegments){
-    let beatsPerMeasure= parseTimeSignatureBeats(s.timeSignature);
-    for(let m=0;m<=s.measures;m++){
-      let measureTick= s.startTick+ m*beatsPerMeasure*TICKS_PER_BEAT;
-      let xLine= tickToX(measureTick,scrollBaseTick);
-      if(xLine>=LEFT_MARGIN && xLine<= canvas.width-RIGHT_MARGIN){
+function drawMeasureGrid(scrollBaseTick, topY, bottomY) {
+  ctx.strokeStyle = 'rgb(80,80,80)';
+  ctx.lineWidth = 1;
+  for (const s of processedSegments) {
+    const beatsPerMeasure = parseTimeSignatureBeats(s.timeSignature);
+    for (let m = 0; m <= s.measures; m++) {
+      const measureTick = s.startTick + m * beatsPerMeasure * TICKS_PER_BEAT;
+      const xLine = tickToX(measureTick, scrollBaseTick);
+      if (xLine >= LEFT_MARGIN && xLine <= canvas.width - RIGHT_MARGIN) {
         ctx.beginPath();
-        ctx.moveTo(xLine,topY);
-        ctx.lineTo(xLine,bottomY);
+        ctx.moveTo(xLine, topY);
+        ctx.lineTo(xLine, bottomY);
         ctx.stroke();
       }
     }
   }
 }
 
-function drawRoleBars(scrollBaseTick, trackY, trackHeight, roleField){
-  let maxTick=getMaxTick();
-  for(let s of processedSegments){
-    let role="none";
-    if(roleField==="gregorRole") role=s.gregorRole;
-    else if(roleField==="aliRole") role=s.aliRole;
-    else role=s.frankRole;
-
-    if(role.toLowerCase()==="none") continue;
-
-    let sx= tickToX(s.startTick, scrollBaseTick);
-    let ex= tickToX(s.endTick,   scrollBaseTick);
-
-    ctx.fillStyle= getRoleColor(role);
-    ctx.fillRect(sx,trackY, ex-sx, trackHeight);
-  }
-}
-
-function drawParamColumnSingleColor(scrollBaseTick, trackY, trackHeight, paramField){
-  let maxTick= getMaxTick();
-  for(let s of processedSegments){
-    let value=0;
-    if(paramField==="komplexitaet") value=s.komplexitaet;
-    else if(paramField==="dissonanz") value=s.dissonanz;
-    else value=s.intensitaet;
-    value= clamp(value,0,10);
-
-    let baseColor= getParamBaseColor(paramField);
-    let alphaVal= mapVal(value,0,10,50,255);
-
-    let sx= tickToX(s.startTick,scrollBaseTick);
-    let ex= tickToX(s.endTick,  scrollBaseTick);
-
-    let colWidth= ex-sx;
-    let colHeight= trackHeight;
-    if(useHeightForParam){
-      colHeight= mapVal(value,0,10,0, trackHeight);
-    }
-    let sy= trackY+ (trackHeight-colHeight);
-
-    ctx.fillStyle= colorWithAlpha(baseColor, alphaVal);
-    ctx.fillRect(sx,sy, colWidth, colHeight);
-  }
-}
-
-function coverLeftRightMarginArea(topY, bottomY){
-  ctx.fillStyle= MARGIN_COLOR;
-  let h= bottomY-topY;
+function coverLeftRightMarginArea(topY, bottomY) {
+  ctx.fillStyle = MARGIN_COLOR;
+  const h = bottomY - topY;
   ctx.fillRect(0, topY, LEFT_MARGIN, h);
-  ctx.fillRect(canvas.width-RIGHT_MARGIN, topY, RIGHT_MARGIN, h);
+  ctx.fillRect(canvas.width - RIGHT_MARGIN, topY, RIGHT_MARGIN, h);
 }
 
-function drawTrackLabel(label, x, y){
-  ctx.fillStyle="#ccc";
-  ctx.font="18px sans-serif";
-  ctx.textAlign="left";
-  ctx.textBaseline="middle";
-  ctx.fillText(label,x,y);
+function drawTrackLabel(label, x, y) {
+  ctx.fillStyle = '#d8d8d8';
+  ctx.font = '18px sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(label, x, y);
 }
 
-function drawPlayhead(playheadX){
-  ctx.strokeStyle="red";
-  ctx.lineWidth=2;
+function drawPlayhead(playheadX) {
+  ctx.strokeStyle = 'red';
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(playheadX, OVERVIEW_TOP+35);
-  ctx.lineTo(playheadX, canvas.height-20);
+  ctx.moveTo(playheadX, OVERVIEW_TOP + 35);
+  ctx.lineTo(playheadX, canvas.height - 20);
   ctx.stroke();
 }
 </script>
