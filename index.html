@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Timeline mit Segment-Rückmeldung</title>
+  <style>
+    body {
+      margin: 0; padding: 0;
+      background: #202020; color: #fff;
+      font-family: sans-serif;
+    }
+    #canvas {
+      display: block;
+      margin: 0 auto;
+      background: #303030;
+    }
+  </style>
+</head>
+<body>
+<canvas id="canvas" width="1200" height="700"></canvas>
+
+<script>
+// ------------------------------------------------------
+// GLOBALE KONFIG
+
+// Neue Segmente, jetzt mit zusätzlichem Feld 'name'
+let segments = [
+  {
+    name: "Auffahrt",
+    measures: 32,
+    timeSignature: "4/4",
+    tonart: "C-Dur",
+    tempo: 80,
+    dissonanz: 3,
+    komplexitaet: 3,
+    intensitaet: 3,
+    aliRole: "",
+    gregorRole: "Harmonie",
+    frankRole: ""
+  },
+   {
+    name: "Auffahrt_B",
+    measures: 32,
+    timeSignature: "4/4",
+    tonart: "C-Dur",
+    tempo: 80,
+    dissonanz: 3,
+    komplexitaet: 3,
+    intensitaet: 3,
+    aliRole: "",
+    gregorRole: "Harmonie",
+    frankRole: "Solo"
+  },
+  {
+    name: "Autobahn",
+    measures: 128,
+    timeSignature: "4/4",
+    tonart: "E-Dur",
+    tempo: 120,
+    dissonanz: 3,
+    komplexitaet: 5,
+    intensitaet: 7,
+    aliRole: "Solo",
+    gregorRole: "Harmonie",
+    frankRole: "Beat"
+  },
+  {
+    name: "Unfall",
+    measures: 128,
+    timeSignature: "4/4",
+    tonart: "F-Dur",
+    tempo: 60,
+    dissonanz: 8,
+    komplexitaet: 6,
+    intensitaet: 10,
+    aliRole: "Solo",
+    gregorRole: "Harmonie",
+    frankRole: "Beat"
+  },
+    {
+    name: "Himmel",
+    measures: 64,
+    timeSignature: "4/4",
+    tonart: "F-Moll",
+    tempo: 80,
+    dissonanz: 1,
+    komplexitaet: 1,
+    intensitaet: 5,
+    aliRole: "Beat",
+    gregorRole: "Solo",
+    frankRole: "Harmonie"
+  }
+];
+
+// Ticks pro Schlag
+const TICKS_PER_BEAT = 24;
+
+// Dimensionen
+const TRACK_HEIGHT_ROLES  = 30;
+const TRACK_HEIGHT_PARAMS = 30;
+const TRACK_GAP           = 20;
+const LEFT_MARGIN         = 150;
+const RIGHT_MARGIN        = 50;
+let pixelsPerTick         = 0.1;
+const PLAYHEAD_FRACTION   = 1/4;
+
+// Overview
+const OVERVIEW_TOP        = 120;
+const OVERVIEW_HEIGHT     = 10;
+const OVERVIEW_LEFT_MARGIN  = 50;
+const OVERVIEW_RIGHT_MARGIN = 50;
+
+const MARGIN_COLOR = "#303030";
+const BACKGROUND_COLOR = "#202020";
+
+// Farben
+const COLOR_HARMONIE = "rgb(0,200,0)";
+const COLOR_SOLO     = "rgb(255,0,0)";
+const COLOR_BEAT     = "rgb(255,255,0)";
+
+const COLOR_KOMPLEX     = "rgb(128,0,128)";
+const COLOR_DISSONANZ   = "rgb(0,0,255)";
+const COLOR_INTENSITAET = "rgb(255,128,0)";
+
+// Falls true: Höhe der Säule ~ Parameterwert
+let useHeightForParam = false;
+
+// GLOBALE VARS
+let canvas, ctx;
+let processedSegments = [];
+let currentTick = 0;
+let ws;
+
+// Um Segmentwechsel zu erkennen
+let lastSegmentIndex = -1;
+
+// ------------------------------------------------------
+// SETUP
+
+window.addEventListener("load", () => {
+  canvas = document.getElementById("canvas");
+  ctx = canvas.getContext("2d");
+
+  prepareSegments();
+
+  // WebSocket
+  let wsUrl = "ws://" + window.location.hostname + ":8080";
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log("WebSocket mit", wsUrl, "verbunden.");
+  };
+
+  // Tick-Daten vom Server (UDP→WS)
+  ws.onmessage = (event) => {
+    let msg = event.data.trim().replace(";", "");
+    let val = parseInt(msg, 10);
+    if(!isNaN(val)) {
+      currentTick = val;
+    }
+  };
+
+  ws.onerror = (err) => console.error("WS-Fehler", err);
+
+  requestAnimationFrame(render);
+});
+
+// ------------------------------------------------------
+// SEGMENTE-Aufbereitung
+
+function prepareSegments(){
+  processedSegments = [];
+  let startTick = 0;
+  let cumulativeStartMeasure = 0;
+
+  for(let i=0; i<segments.length; i++){
+    let obj = segments[i];
+    let beatsPerMeasure = parseTimeSignatureBeats(obj.timeSignature);
+    let segLenInTicks = obj.measures * beatsPerMeasure * TICKS_PER_BEAT;
+
+    let s = {
+      // Neu: name
+      name: obj.name || ("Segment"+(i+1)),
+      measures: obj.measures,
+      timeSignature: obj.timeSignature,
+      tonart: obj.tonart,
+      tempo: obj.tempo,
+      dissonanz: obj.dissonanz,
+      komplexitaet: obj.komplexitaet,
+      intensitaet: obj.intensitaet,
+      gregorRole: obj.gregorRole,
+      aliRole: obj.aliRole,
+      frankRole: obj.frankRole,
+
+      startTick: startTick,
+      endTick: startTick+segLenInTicks,
+      absoluteStartMeasure: cumulativeStartMeasure
+    };
+
+    processedSegments.push(s);
+
+    startTick += segLenInTicks;
+    cumulativeStartMeasure += obj.measures;
+  }
+}
+
+// ------------------------------------------------------
+// RENDER-LOOP
+
+function render(){
+  // Hintergrund
+  ctx.fillStyle = BACKGROUND_COLOR;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // Zeit
+  let elapsedSec = computeElapsedTimeSec(currentTick);
+  let mm = Math.floor(elapsedSec/60);
+  let ss = Math.floor(elapsedSec%60);
+  let timeStr = pad2(mm)+":"+pad2(ss);
+
+  // Aktuelles Segment
+  let info = getCurrentSegmentInfo(currentTick);
+  let measureInfo = "Takt: " + info.currentMeasure +
+    "   Zählzeit: " + info.currentBeat +
+    "   Taktart: " + info.currTimeSig +
+    "   Tonart: " + info.currTonart +
+    "   Tempo: " + info.currTempo + " BPM" +
+    "   Zeit: " + timeStr;
+  ctx.fillStyle="#fff";
+  ctx.font="18px sans-serif";
+  ctx.textAlign="left";
+  ctx.fillText(measureInfo, 20,20);
+
+  drawLegend(20,50);
+  drawOverviewTrack();
+
+  // Scroll
+  let tw = canvas.width - LEFT_MARGIN - RIGHT_MARGIN;
+  let playheadX = LEFT_MARGIN + tw*PLAYHEAD_FRACTION;
+  let scrollBaseTick = currentTick - (playheadX-LEFT_MARGIN)/pixelsPerTick;
+
+  // Spuren
+  let startY = OVERVIEW_TOP+40;
+  let nextY  = startY;
+
+  let totalTracksHeight = 3*(TRACK_HEIGHT_ROLES+TRACK_GAP)+
+                          3*(TRACK_HEIGHT_PARAMS+TRACK_GAP)-TRACK_GAP;
+
+  drawMeasureGrid(scrollBaseTick, startY, startY + totalTracksHeight);
+
+  // Gregor
+  drawRoleBars(scrollBaseTick, nextY, TRACK_HEIGHT_ROLES, "gregorRole");
+  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_ROLES);
+  drawTrackLabel("Gregor", 20, nextY+TRACK_HEIGHT_ROLES-2);
+  nextY+= TRACK_HEIGHT_ROLES+TRACK_GAP;
+
+  // Ali
+  drawRoleBars(scrollBaseTick, nextY, TRACK_HEIGHT_ROLES, "aliRole");
+  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_ROLES);
+  drawTrackLabel("Ali", 20, nextY+TRACK_HEIGHT_ROLES-2);
+  nextY+= TRACK_HEIGHT_ROLES+TRACK_GAP;
+
+  // Frank
+  drawRoleBars(scrollBaseTick, nextY, TRACK_HEIGHT_ROLES, "frankRole");
+  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_ROLES);
+  drawTrackLabel("Frank", 20, nextY+TRACK_HEIGHT_ROLES-2);
+  nextY+= TRACK_HEIGHT_ROLES+TRACK_GAP;
+
+  // Komplexität
+  drawParamColumnSingleColor(scrollBaseTick, nextY, TRACK_HEIGHT_PARAMS, "komplexitaet");
+  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_PARAMS);
+  drawTrackLabel("Komplexität", 20, nextY+TRACK_HEIGHT_PARAMS/2);
+  nextY+= TRACK_HEIGHT_PARAMS+TRACK_GAP;
+
+  // Dissonanz
+  drawParamColumnSingleColor(scrollBaseTick, nextY, TRACK_HEIGHT_PARAMS, "dissonanz");
+  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_PARAMS);
+  drawTrackLabel("Dissonanz", 20, nextY+TRACK_HEIGHT_PARAMS/2);
+  nextY+= TRACK_HEIGHT_PARAMS+TRACK_GAP;
+
+  // Intensität
+  drawParamColumnSingleColor(scrollBaseTick, nextY, TRACK_HEIGHT_PARAMS, "intensitaet");
+  coverLeftRightMarginArea(nextY, nextY+TRACK_HEIGHT_PARAMS);
+  drawTrackLabel("Intensität", 20, nextY+TRACK_HEIGHT_PARAMS/2);
+  nextY+= TRACK_HEIGHT_PARAMS+TRACK_GAP;
+
+  drawPlayhead(playheadX);
+
+  // Ermittlung, in welchem Segment wir aktuell sind
+  let idx = getSegmentIndex(currentTick);
+  if(idx>=0 && idx!==lastSegmentIndex){
+    // => Segmentwechsel
+    let s = processedSegments[idx];
+    console.log("Segment-Wechsel:", s.name);
+    // Per WebSocket an Server schicken
+    if(ws && ws.readyState===WebSocket.OPEN){
+      let payload = {
+        type: "segmentChange",
+        data: {
+          name: s.name,
+          tempo: s.tempo,
+          tonart: s.tonart,
+          timeSignature: s.timeSignature,
+          dissonanz: s.dissonanz,
+          komplexitaet: s.komplexitaet,
+          intensitaet: s.intensitaet
+        }
+      };
+      ws.send(JSON.stringify(payload));
+    }
+    lastSegmentIndex= idx;
+  }
+
+  requestAnimationFrame(render);
+}
+
+// ------------------------------------------------------
+// HILFSFUNKTIONEN
+
+function parseTimeSignatureBeats(ts){
+  let parts= ts.split("/");
+  if(parts.length===2){
+    let n= parseInt(parts[0],10);
+    if(!isNaN(n)) return n;
+  }
+  return 4;
+}
+
+function getMaxTick(){
+  if(processedSegments.length===0) return 0;
+  return processedSegments[processedSegments.length-1].endTick;
+}
+
+function clamp(v,min,max){ return Math.max(min, Math.min(max,v)); }
+
+function mapVal(value,inMin,inMax,outMin,outMax){
+  if(inMax===inMin) return outMin;
+  return outMin + ((value-inMin)/(inMax-inMin))*(outMax-outMin);
+}
+
+function tickToX(tick,scrollBaseTick){
+  return LEFT_MARGIN + (tick-scrollBaseTick)*pixelsPerTick;
+}
+
+function getRoleColor(role){
+  let r= role.toLowerCase();
+  if(r==="harmonie") return COLOR_HARMONIE;
+  if(r==="solo")     return COLOR_SOLO;
+  if(r==="beat")     return COLOR_BEAT;
+  return "rgb(150,150,150)";
+}
+
+function getParamBaseColor(paramField){
+  if(paramField==="komplexitaet") return COLOR_KOMPLEX;
+  if(paramField==="dissonanz")    return COLOR_DISSONANZ;
+  return COLOR_INTENSITAET;
+}
+
+function colorWithAlpha(rgbStr, alphaVal){
+  let alphaFloat= alphaVal/255;
+  let inside= rgbStr.substring(rgbStr.indexOf("(")+1, rgbStr.indexOf(")"));
+  return "rgba("+inside+","+alphaFloat.toFixed(2)+")";
+}
+
+// Zeit aus BPM + Ticks
+function computeElapsedTimeSec(upToTick){
+  let totalSec=0;
+  for(let s of processedSegments){
+    let segStart= s.startTick;
+    let segEnd  = s.endTick;
+    let ticksPerSec= (s.tempo*TICKS_PER_BEAT)/60.0;
+
+    if(upToTick>=segEnd){
+      let segLen= segEnd-segStart;
+      totalSec+= segLen/ticksPerSec;
+    }
+    else if(upToTick>=segStart && upToTick<segEnd){
+      let part= upToTick-segStart;
+      totalSec+= part/ticksPerSec;
+      break;
+    }
+    else if(upToTick<segStart){
+      break;
+    }
+  }
+  return totalSec;
+}
+
+// Info zum aktuellen Tick
+function getCurrentSegmentInfo(tick){
+  let info= {
+    currentMeasure:0,
+    currentBeat:0,
+    currTimeSig:"",
+    currTonart:"",
+    currTempo:120
+  };
+  for(let s of processedSegments){
+    if(tick>=s.startTick && tick<s.endTick){
+      let localTicks= tick - s.startTick;
+      let beatsPerMeasure= parseTimeSignatureBeats(s.timeSignature);
+      let ticksPerMeasure= beatsPerMeasure*TICKS_PER_BEAT;
+      let measureOffset= Math.floor(localTicks/ticksPerMeasure);
+      let beatOffset   = Math.floor( (localTicks/TICKS_PER_BEAT)%beatsPerMeasure );
+
+      info.currentMeasure= s.absoluteStartMeasure+ measureOffset+1;
+      info.currentBeat   = beatOffset+1;
+      info.currTimeSig   = s.timeSignature;
+      info.currTonart    = s.tonart;
+      info.currTempo     = s.tempo;
+      return info;
+    }
+  }
+  return info;
+}
+
+// Bestimme Index des aktuellen Segments
+function getSegmentIndex(tick){
+  for(let i=0; i<processedSegments.length; i++){
+    let s= processedSegments[i];
+    if(tick>=s.startTick && tick<s.endTick){
+      return i;
+    }
+  }
+  return -1;
+}
+
+// Mop up
+
+function pad2(num){ return (num<10)?("0"+num):(""+num);}
+
+// Zeichnen
+
+function drawLegend(x,y){
+  ctx.font="18px sans-serif";
+  ctx.fillStyle="#fff";
+  // ... wie gehabt ...
+  let boxSize=20, spacing=100;
+  // Harmonie
+  ctx.fillStyle=COLOR_HARMONIE;
+  ctx.fillRect(x,y,boxSize,boxSize);
+  ctx.fillStyle="#fff";
+  ctx.fillText("Harmonie", x+boxSize+5, y+16);
+
+  // Solo
+  ctx.fillStyle=COLOR_SOLO;
+  ctx.fillRect(x+spacing,y,boxSize,boxSize);
+  ctx.fillStyle="#fff";
+  ctx.fillText("Solo", x+spacing+boxSize+5, y+16);
+
+  // Beat
+  ctx.fillStyle=COLOR_BEAT;
+  ctx.fillRect(x+2*spacing,y,boxSize,boxSize);
+  ctx.fillStyle="#fff";
+  ctx.fillText("Beat", x+2*spacing+boxSize+5, y+16);
+}
+
+function drawOverviewTrack(){
+  let overviewWidth= canvas.width-OVERVIEW_LEFT_MARGIN-OVERVIEW_RIGHT_MARGIN;
+  let maxTick= getMaxTick();
+  ctx.strokeStyle="#ccc";
+  ctx.lineWidth=2;
+  let yCenter= OVERVIEW_TOP+ OVERVIEW_HEIGHT/2;
+  ctx.beginPath();
+  ctx.moveTo(OVERVIEW_LEFT_MARGIN,yCenter);
+  ctx.lineTo(OVERVIEW_LEFT_MARGIN+overviewWidth,yCenter);
+  ctx.stroke();
+
+  ctx.textAlign="center";
+  ctx.textBaseline="bottom";
+  ctx.font="14px sans-serif";
+  ctx.fillStyle="#fff";
+
+  for(let i=0;i<processedSegments.length;i++){
+    let s= processedSegments[i];
+    let xLine= mapVal(s.startTick,0,maxTick, OVERVIEW_LEFT_MARGIN, OVERVIEW_LEFT_MARGIN+overviewWidth);
+    ctx.strokeStyle="rgb(120,120,120)";
+    ctx.lineWidth=1;
+    ctx.beginPath();
+    ctx.moveTo(xLine,OVERVIEW_TOP);
+    ctx.lineTo(xLine,OVERVIEW_TOP+OVERVIEW_HEIGHT);
+    ctx.stroke();
+
+    ctx.fillText(segments[i].name, xLine, OVERVIEW_TOP-2);
+  }
+
+  let xCursor= mapVal(currentTick,0,maxTick, OVERVIEW_LEFT_MARGIN, OVERVIEW_LEFT_MARGIN+overviewWidth);
+  ctx.strokeStyle="red";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(xCursor, OVERVIEW_TOP-5);
+  ctx.lineTo(xCursor, OVERVIEW_TOP+OVERVIEW_HEIGHT+5);
+  ctx.stroke();
+}
+
+function drawMeasureGrid(scrollBaseTick, topY, bottomY){
+  ctx.strokeStyle="rgb(80,80,80)";
+  ctx.lineWidth=1;
+  let maxTick=getMaxTick();
+  for(let s of processedSegments){
+    let beatsPerMeasure= parseTimeSignatureBeats(s.timeSignature);
+    for(let m=0;m<=s.measures;m++){
+      let measureTick= s.startTick+ m*beatsPerMeasure*TICKS_PER_BEAT;
+      let xLine= tickToX(measureTick,scrollBaseTick);
+      if(xLine>=LEFT_MARGIN && xLine<= canvas.width-RIGHT_MARGIN){
+        ctx.beginPath();
+        ctx.moveTo(xLine,topY);
+        ctx.lineTo(xLine,bottomY);
+        ctx.stroke();
+      }
+    }
+  }
+}
+
+function drawRoleBars(scrollBaseTick, trackY, trackHeight, roleField){
+  let maxTick=getMaxTick();
+  for(let s of processedSegments){
+    let role="none";
+    if(roleField==="gregorRole") role=s.gregorRole;
+    else if(roleField==="aliRole") role=s.aliRole;
+    else role=s.frankRole;
+
+    if(role.toLowerCase()==="none") continue;
+
+    let sx= tickToX(s.startTick, scrollBaseTick);
+    let ex= tickToX(s.endTick,   scrollBaseTick);
+
+    ctx.fillStyle= getRoleColor(role);
+    ctx.fillRect(sx,trackY, ex-sx, trackHeight);
+  }
+}
+
+function drawParamColumnSingleColor(scrollBaseTick, trackY, trackHeight, paramField){
+  let maxTick= getMaxTick();
+  for(let s of processedSegments){
+    let value=0;
+    if(paramField==="komplexitaet") value=s.komplexitaet;
+    else if(paramField==="dissonanz") value=s.dissonanz;
+    else value=s.intensitaet;
+    value= clamp(value,0,10);
+
+    let baseColor= getParamBaseColor(paramField);
+    let alphaVal= mapVal(value,0,10,50,255);
+
+    let sx= tickToX(s.startTick,scrollBaseTick);
+    let ex= tickToX(s.endTick,  scrollBaseTick);
+
+    let colWidth= ex-sx;
+    let colHeight= trackHeight;
+    if(useHeightForParam){
+      colHeight= mapVal(value,0,10,0, trackHeight);
+    }
+    let sy= trackY+ (trackHeight-colHeight);
+
+    ctx.fillStyle= colorWithAlpha(baseColor, alphaVal);
+    ctx.fillRect(sx,sy, colWidth, colHeight);
+  }
+}
+
+function coverLeftRightMarginArea(topY, bottomY){
+  ctx.fillStyle= MARGIN_COLOR;
+  let h= bottomY-topY;
+  ctx.fillRect(0, topY, LEFT_MARGIN, h);
+  ctx.fillRect(canvas.width-RIGHT_MARGIN, topY, RIGHT_MARGIN, h);
+}
+
+function drawTrackLabel(label, x, y){
+  ctx.fillStyle="#ccc";
+  ctx.font="18px sans-serif";
+  ctx.textAlign="left";
+  ctx.textBaseline="middle";
+  ctx.fillText(label,x,y);
+}
+
+function drawPlayhead(playheadX){
+  ctx.strokeStyle="red";
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(playheadX, OVERVIEW_TOP+35);
+  ctx.lineTo(playheadX, canvas.height-20);
+  ctx.stroke();
+}
+</script>
+</body>
+</html>
