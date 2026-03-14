@@ -65,6 +65,9 @@ const TRACK_PADDING_TOP = 10;
 const TRACK_PADDING_BOTTOM = 8;
 const TRACK_MIN_HEIGHT = 56;
 
+// Einstellbar: Wie viele Takte im sichtbaren Timeline-Ausschnitt gezeigt werden
+const VISIBLE_WINDOW_MEASURES = 16;
+
 let canvas;
 let ctx;
 let songSelect;
@@ -219,6 +222,21 @@ function getTrackHeight(trackDef) {
   return Math.max(TRACK_MIN_HEIGHT, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + (maxLines * LINE_HEIGHT));
 }
 
+function getCurrentBeatsPerMeasure() {
+  const idx = getSegmentIndex(currentTick);
+  if (idx >= 0) {
+    return parseTimeSignatureBeats(processedSegments[idx].timeSignature);
+  }
+  return 4;
+}
+
+function updateHorizontalScale() {
+  const timelineWidth = canvas.width - LEFT_MARGIN - RIGHT_MARGIN;
+  const beatsPerMeasure = getCurrentBeatsPerMeasure();
+  const visibleTicks = Math.max(1, VISIBLE_WINDOW_MEASURES * beatsPerMeasure * TICKS_PER_BEAT);
+  pixelsPerTick = timelineWidth / visibleTicks;
+}
+
 function parseTimeSignatureBeats(ts) {
   const parts = String(ts || '').split('/');
   if (parts.length === 2) {
@@ -306,13 +324,14 @@ function render() {
   const timeStr = `${pad2(mm)}:${pad2(ss)}`;
 
   const info = getCurrentSegmentInfo(currentTick);
-  const measureInfo = `Takt: ${info.currentMeasure}   Zählzeit: ${info.currentBeat}   Taktart: ${info.currTimeSig}   Tonart: ${info.currTonart}   Tempo: ${info.currTempo} BPM   Zeit: ${timeStr}`;
+  const measureInfo = `Takt: ${info.currentMeasure}   Zählzeit: ${info.currentBeat}   Taktart: ${info.currTimeSig}   Tonart: ${info.currTonart}   Tempo: ${info.currTempo} BPM   Zeit: ${timeStr}   Fenster: ${VISIBLE_WINDOW_MEASURES} Takte`;
   ctx.fillStyle = '#fff';
   ctx.font = '18px sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText(measureInfo, 20, 24);
 
   drawOverviewTrack();
+  updateHorizontalScale();
 
   const timelineWidth = canvas.width - LEFT_MARGIN - RIGHT_MARGIN;
   const playheadX = LEFT_MARGIN + timelineWidth * PLAYHEAD_FRACTION;
