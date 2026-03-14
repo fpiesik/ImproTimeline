@@ -65,6 +65,13 @@ const TRACK_PADDING_TOP = 10;
 const TRACK_PADDING_BOTTOM = 8;
 const TRACK_MIN_HEIGHT = 56;
 
+// Einstellbar: Wie viele Takte im sichtbaren Timeline-Ausschnitt gezeigt werden
+const VISIBLE_WINDOW_MEASURES = 16;
+
+// Einstellbar: Abstand, bei dem ein gehaltenes Segment freigegeben wird
+const STICKY_RELEASE_DISTANCE_PX = 220;
+const INSTRUCTION_CARD_WIDTH_PX = 320;
+
 let canvas;
 let ctx;
 let songSelect;
@@ -219,6 +226,21 @@ function getTrackHeight(trackDef) {
   return Math.max(TRACK_MIN_HEIGHT, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + (maxLines * LINE_HEIGHT));
 }
 
+function getCurrentBeatsPerMeasure() {
+  const idx = getSegmentIndex(currentTick);
+  if (idx >= 0) {
+    return parseTimeSignatureBeats(processedSegments[idx].timeSignature);
+  }
+  return 4;
+}
+
+function updateHorizontalScale() {
+  const timelineWidth = canvas.width - LEFT_MARGIN - RIGHT_MARGIN;
+  const beatsPerMeasure = getCurrentBeatsPerMeasure();
+  const visibleTicks = Math.max(1, VISIBLE_WINDOW_MEASURES * beatsPerMeasure * TICKS_PER_BEAT);
+  pixelsPerTick = timelineWidth / visibleTicks;
+}
+
 function parseTimeSignatureBeats(ts) {
   const parts = String(ts || '').split('/');
   if (parts.length === 2) {
@@ -306,13 +328,14 @@ function render() {
   const timeStr = `${pad2(mm)}:${pad2(ss)}`;
 
   const info = getCurrentSegmentInfo(currentTick);
-  const measureInfo = `Takt: ${info.currentMeasure}   Zählzeit: ${info.currentBeat}   Taktart: ${info.currTimeSig}   Tonart: ${info.currTonart}   Tempo: ${info.currTempo} BPM   Zeit: ${timeStr}`;
+  const measureInfo = `Takt: ${info.currentMeasure}   Zählzeit: ${info.currentBeat}   Taktart: ${info.currTimeSig}   Tonart: ${info.currTonart}   Tempo: ${info.currTempo} BPM   Zeit: ${timeStr}   Fenster: ${VISIBLE_WINDOW_MEASURES} Takte`;
   ctx.fillStyle = '#fff';
   ctx.font = '18px sans-serif';
   ctx.textAlign = 'left';
   ctx.fillText(measureInfo, 20, 24);
 
   drawOverviewTrack();
+  updateHorizontalScale();
 
   const timelineWidth = canvas.width - LEFT_MARGIN - RIGHT_MARGIN;
   const playheadX = LEFT_MARGIN + timelineWidth * PLAYHEAD_FRACTION;
@@ -321,10 +344,12 @@ function render() {
   let nextY = OVERVIEW_TOP + 40;
   drawMeasureGrid(scrollBaseTick, nextY, nextY + tracksHeight);
 
+  const currentSegmentIndex = getSegmentIndex(currentTick);
+
   for (let i = 0; i < trackDefs.length; i++) {
     const trackDef = trackDefs[i];
     const trackHeight = trackHeights[i];
-    drawInstructionTrack(scrollBaseTick, nextY, trackHeight, trackDef);
+    drawInstructionTrack(scrollBaseTick, nextY, trackHeight, trackDef, playheadX, currentSegmentIndex);
     coverLeftRightMarginArea(nextY, nextY + trackHeight);
     drawTrackLabel(trackDef.label, 20, nextY + trackHeight / 2);
     nextY += trackHeight + TRACK_GAP;
@@ -332,10 +357,9 @@ function render() {
 
   drawPlayhead(playheadX);
 
-  const idx = getSegmentIndex(currentTick);
-  if (idx >= 0 && idx !== lastSegmentIndex) {
-    notifySegmentChange(processedSegments[idx]);
-    lastSegmentIndex = idx;
+  if (currentSegmentIndex >= 0 && currentSegmentIndex !== lastSegmentIndex) {
+    notifySegmentChange(processedSegments[currentSegmentIndex]);
+    lastSegmentIndex = currentSegmentIndex;
   }
 
   requestAnimationFrame(render);
@@ -355,8 +379,9 @@ function notifySegmentChange(segment) {
   }));
 }
 
-function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef) {
-  for (const s of processedSegments) {
+function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, playheadX, currentSegmentIndex) {
+  for (let i = 0; i < processedSegments.length; i++) {
+    const s = processedSegments[i];
     const sx = tickToX(s.startTick, scrollBaseTick);
     const ex = tickToX(s.endTick, scrollBaseTick);
     if (ex < LEFT_MARGIN || sx > canvas.width - RIGHT_MARGIN) continue;
@@ -370,16 +395,52 @@ function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef) {
     const lines = getInstructionLines(s, trackDef.key);
     if (lines.length === 0) continue;
 
+    const cardX = getInstructionCardX(i, scrollBaseTick, playheadX, currentSegmentIndex);
+    const cardMaxWidth = Math.max(80, Math.min(INSTRUCTION_CARD_WIDTH_PX, ex - sx - 14));
+    const cardHeight = Math.min(trackHeight - 8, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + lines.length * LINE_HEIGHT);
+    const cardY = trackY + 4;
+
+    ctx.fillStyle = '#101010';
+    ctx.fillRect(cardX, cardY, cardMaxWidth, cardHeight);
+    ctx.strokeStyle = '#8a8a8a';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cardX, cardY, cardMaxWidth, cardHeight);
+
     ctx.fillStyle = '#f3f3f3';
     ctx.font = '17px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
-    for (let i = 0; i < lines.length; i++) {
-      const textY = trackY + TRACK_PADDING_TOP + (i * LINE_HEIGHT);
-      ctx.fillText(`• ${lines[i]}`, sx + 8, textY, Math.max(40, ex - sx - 16));
+    for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+      const textY = cardY + TRACK_PADDING_TOP + (lineIndex * LINE_HEIGHT);
+      ctx.fillText(`• ${lines[lineIndex]}`, cardX + 8, textY, Math.max(40, cardMaxWidth - 16));
     }
   }
+}
+
+function getInstructionCardX(segmentIndex, scrollBaseTick, playheadX, currentSegmentIndex) {
+  const segment = processedSegments[segmentIndex];
+  const normalCardX = tickToX(segment.startTick, scrollBaseTick) + 8;
+
+  if (segmentIndex !== currentSegmentIndex) {
+    return normalCardX;
+  }
+
+  // Aktuelle Anweisung an der roten Linie halten
+  const holdX = playheadX + 6;
+  const stickyCardX = Math.min(normalCardX, holdX);
+
+  // Freigabe: wenn nächste Anweisung nahe genug ist, darf die aktuelle weiterziehen
+  const nextIndex = currentSegmentIndex + 1;
+  if (nextIndex < processedSegments.length) {
+    const nextNormalCardX = tickToX(processedSegments[nextIndex].startTick, scrollBaseTick) + 8;
+    const distanceToNext = nextNormalCardX - stickyCardX;
+    if (distanceToNext <= STICKY_RELEASE_DISTANCE_PX) {
+      return normalCardX;
+    }
+  }
+
+  return stickyCardX;
 }
 
 function drawOverviewTrack() {
