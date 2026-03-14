@@ -12,7 +12,7 @@
       "aliRole": "Solo",
       "frankRole": "Beat",
       "instructions": {
-        "all": ["Ruhig beginnen", "Viel Raum lassen"],
+        "all": ["Ruhig beginnen", "Viel Raum lassen","wenige Töne"],
         "Gregor": ["Nur lange Töne", "Voicings offen halten"],
         "Ali": ["Kurze Einwürfe", "Auf Gregor reagieren"],
         "Frank": ["Nur punktuelle Akzente"]
