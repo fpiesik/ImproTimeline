@@ -1,0 +1,54 @@
+{
+  "name": "Stadtfahrt",
+  "musicians": ["Gregor", "Ali", "Frank"],
+  "segments": [
+    {
+      "name": "Intro",
+      "measures": 4,
+      "timeSignature": "4/4",
+      "tonart": "C-Dur",
+      "tempo": 90,
+      "gregorRole": "Harmonie",
+      "aliRole": "Solo",
+      "frankRole": "Beat",
+      "instructions": {
+        "all": ["Ruhig beginnen", "Viel Raum lassen"],
+        "Gregor": ["Nur lange Töne", "Voicings offen halten"],
+        "Ali": ["Kurze Einwürfe", "Auf Gregor reagieren"],
+        "Frank": ["Nur punktuelle Akzente"]
+      }
+    },
+    {
+      "name": "Bogen",
+      "measures": 16,
+      "timeSignature": "4/4",
+      "tonart": "E-Moll",
+      "tempo": 112,
+      "gregorRole": "Harmonie",
+      "aliRole": "Solo",
+      "frankRole": "Beat",
+      "instructions": {
+        "all": ["Dynamik stetig steigern", "Phrasen klar abschließen"],
+        "Gregor": ["Rhythmik dichter machen"],
+        "Ali": ["Motive sequenzieren"],
+        "Frank": ["Backbeat ab Takt 9 verstärken"]
+      }
+    },
+    {
+      "name": "Ausklang",
+      "measures": 8,
+      "timeSignature": "3/4",
+      "tonart": "G-Dur",
+      "tempo": 72,
+      "gregorRole": "Harmonie",
+      "aliRole": "Beat",
+      "frankRole": "Solo",
+      "instructions": {
+        "all": ["Klangfläche öffnen", "Tempo innerlich halten"],
+        "Gregor": ["Sus-Akkorde halten"],
+        "Ali": ["Nur Einzeltöne als Antworten"],
+        "Frank": ["Textur statt Groove"]
+      }
+    }
+  ]
+}
