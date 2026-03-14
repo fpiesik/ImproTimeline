@@ -71,6 +71,8 @@ const VISIBLE_WINDOW_MEASURES = 16;
 // Einstellbar: Abstand, bei dem ein gehaltenes Segment freigegeben wird
 const STICKY_RELEASE_DISTANCE_PX = 220;
 const INSTRUCTION_CARD_WIDTH_PX = 320;
+// Zusätzliche Stabilität: mindestens diesen Anteil des aktuellen Segments an der roten Linie halten
+const MIN_STICKY_PROGRESS_BEFORE_RELEASE = 0.55;
 
 let canvas;
 let ctx;
@@ -430,7 +432,14 @@ function getInstructionCardX(segmentIndex, scrollBaseTick, playheadX, currentSeg
   const holdX = playheadX + 6;
   const stickyCardX = Math.min(normalCardX, holdX);
 
-  // Freigabe: wenn nächste Anweisung nahe genug ist, darf die aktuelle weiterziehen
+  // Zuerst Mindest-Haltefortschritt innerhalb des Segments erzwingen
+  const segmentDuration = Math.max(1, segment.endTick - segment.startTick);
+  const segmentProgress = (currentTick - segment.startTick) / segmentDuration;
+  if (segmentProgress < MIN_STICKY_PROGRESS_BEFORE_RELEASE) {
+    return stickyCardX;
+  }
+
+  // Danach Freigabe: wenn nächste Anweisung nahe genug ist, darf die aktuelle weiterziehen
   const nextIndex = currentSegmentIndex + 1;
   if (nextIndex < processedSegments.length) {
     const nextNormalCardX = tickToX(processedSegments[nextIndex].startTick, scrollBaseTick) + 8;
