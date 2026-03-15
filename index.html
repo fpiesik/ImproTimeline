@@ -423,14 +423,22 @@ function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, pla
 function getInstructionCardX(segmentIndex, scrollBaseTick, playheadX, currentSegmentIndex) {
   const segment = processedSegments[segmentIndex];
   const normalCardX = tickToX(segment.startTick, scrollBaseTick) + 8;
+  const holdX = playheadX + 6;
 
-  if (segmentIndex !== currentSegmentIndex) {
+  // Standardverhalten: Sobald eine Karte die rote Linie erreicht, bleibt sie dort stehen.
+  const stickyCardX = Math.max(normalCardX, holdX);
+
+  // Bereits vergangene Segmente laufen normal weiter nach links.
+  if (segmentIndex < currentSegmentIndex) {
     return normalCardX;
   }
 
+  if (segmentIndex > currentSegmentIndex) {
+    return stickyCardX;
+  }
+
+  // SegmentIndex === currentSegmentIndex
   // Aktuelle Anweisung an der roten Linie halten
-  const holdX = playheadX + 6;
-  const stickyCardX = Math.min(normalCardX, holdX);
 
   // Zuerst Mindest-Haltefortschritt innerhalb des Segments erzwingen
   const segmentDuration = Math.max(1, segment.endTick - segment.startTick);
@@ -443,7 +451,8 @@ function getInstructionCardX(segmentIndex, scrollBaseTick, playheadX, currentSeg
   const nextIndex = currentSegmentIndex + 1;
   if (nextIndex < processedSegments.length) {
     const nextNormalCardX = tickToX(processedSegments[nextIndex].startTick, scrollBaseTick) + 8;
-    const distanceToNext = nextNormalCardX - stickyCardX;
+    const nextStickyCardX = Math.max(nextNormalCardX, holdX);
+    const distanceToNext = nextStickyCardX - stickyCardX;
     if (distanceToNext <= STICKY_RELEASE_DISTANCE_PX) {
       return normalCardX;
     }
