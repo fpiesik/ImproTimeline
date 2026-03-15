@@ -8,9 +8,6 @@
       "timeSignature": "4/4",
       "tonart": "C-Dur",
       "tempo": 90,
-      "gregorRole": "Harmonie",
-      "aliRole": "Solo",
-      "frankRole": "Beat",
       "instructions": {
         "all": ["Ruhig beginnen", "Viel Raum lassen"],
         "Gregor": ["Nur lange Töne", "Voicings offen halten"],
@@ -24,9 +21,6 @@
       "timeSignature": "4/4",
       "tonart": "E-Moll",
       "tempo": 112,
-      "gregorRole": "Harmonie",
-      "aliRole": "Solo",
-      "frankRole": "Beat",
       "instructions": {
         "all": ["Dynamik stetig steigern", "Phrasen klar abschließen"],
         "Gregor": ["Rhythmik dichter machen"],
@@ -40,9 +34,6 @@
       "timeSignature": "3/4",
       "tonart": "G-Dur",
       "tempo": 72,
-      "gregorRole": "Harmonie",
-      "aliRole": "Beat",
-      "frankRole": "Solo",
       "instructions": {
         "all": ["Klangfläche öffnen", "Tempo innerlich halten"],
         "Gregor": ["Sus-Akkorde halten"],

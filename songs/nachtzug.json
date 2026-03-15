@@ -8,9 +8,6 @@
       "timeSignature": "4/4",
       "tonart": "D-Moll",
       "tempo": 76,
-      "gregorRole": "Harmonie",
-      "aliRole": "Beat",
-      "frankRole": "Solo",
       "instructions": {
         "all": ["Leise starten", "Lücken bewusst stehen lassen"],
         "Gregor": ["Pedalton auf D halten"],
@@ -24,9 +21,6 @@
       "timeSignature": "5/4",
       "tonart": "A-Dur",
       "tempo": 128,
-      "gregorRole": "Beat",
-      "aliRole": "Solo",
-      "frankRole": "Harmonie",
       "instructions": {
         "all": ["Kontrast deutlich machen", "Klaren Puls behalten"],
         "Gregor": ["Pattern alle 5 Schläge wiederholen"],
@@ -40,9 +34,6 @@
       "timeSignature": "4/4",
       "tonart": "F-Dur",
       "tempo": 100,
-      "gregorRole": "Solo",
-      "aliRole": "Harmonie",
-      "frankRole": "Beat",
       "instructions": {
         "all": ["Klang aufhellen", "Gemeinsamen Schluss vorbereiten"],
         "Gregor": ["Melodische Leitstimme übernehmen"],
