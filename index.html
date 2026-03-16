@@ -68,11 +68,9 @@ const TRACK_MIN_HEIGHT = 56;
 // Einstellbar: Wie viele Takte im sichtbaren Timeline-Ausschnitt gezeigt werden
 const VISIBLE_WINDOW_MEASURES = 16;
 
-// Einstellbar: Abstand, bei dem ein gehaltenes Segment freigegeben wird
-const STICKY_RELEASE_DISTANCE_PX = 0;
 const INSTRUCTION_CARD_WIDTH_PX = 320;
-// Zusätzliche Stabilität: mindestens diesen Anteil des aktuellen Segments an der roten Linie halten
-const MIN_STICKY_PROGRESS_BEFORE_RELEASE = 0.55;
+// Kleiner Abstand zwischen Karten, damit sie sich beim Schieben nicht überlagern
+const CARD_GAP_PX = 10;
 
 let canvas;
 let ctx;
@@ -87,6 +85,7 @@ let trackDefs = [];
 let currentTick = 0;
 let lastSegmentIndex = -1;
 let pixelsPerTick = 0.1;
+const instructionCardOffsetsByTrack = {};
 
 window.addEventListener('load', async () => {
   canvas = document.getElementById('canvas');
@@ -180,6 +179,9 @@ function getTrackDefs() {
 function prepareSegments() {
   processedSegments = [];
   trackDefs = getTrackDefs();
+  for (const key of Object.keys(instructionCardOffsetsByTrack)) {
+    delete instructionCardOffsetsByTrack[key];
+  }
   if (!currentSong || !Array.isArray(currentSong.segments)) return;
 
   let startTick = 0;
@@ -382,6 +384,8 @@ function notifySegmentChange(segment) {
 }
 
 function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, playheadX, currentSegmentIndex) {
+  const cardLayouts = getInstructionCardLayouts(trackDef.key, scrollBaseTick, playheadX, currentSegmentIndex);
+
   for (let i = 0; i < processedSegments.length; i++) {
     const s = processedSegments[i];
     const sx = tickToX(s.startTick, scrollBaseTick);
@@ -397,7 +401,10 @@ function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, pla
     const lines = getInstructionLines(s, trackDef.key);
     if (lines.length === 0) continue;
 
-    const cardX = getInstructionCardX(i, scrollBaseTick, playheadX, currentSegmentIndex);
+    const layout = cardLayouts[i];
+    if (!layout) continue;
+
+    const cardX = layout.x;
     const cardMaxWidth = Math.max(80, Math.min(INSTRUCTION_CARD_WIDTH_PX, ex - sx - 14));
     const cardHeight = Math.min(trackHeight - 8, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + lines.length * LINE_HEIGHT);
     const cardY = trackY + 4;
@@ -420,45 +427,47 @@ function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, pla
   }
 }
 
-function getInstructionCardX(segmentIndex, scrollBaseTick, playheadX, currentSegmentIndex) {
-  const segment = processedSegments[segmentIndex];
-  const normalCardX = tickToX(segment.startTick, scrollBaseTick) + 8;
+function getInstructionCardLayouts(trackKey, scrollBaseTick, playheadX, currentSegmentIndex) {
   const holdX = playheadX + 6;
+  const offsets = instructionCardOffsetsByTrack[trackKey] || {};
+  const entries = [];
 
-  // Standardverhalten: Sobald eine Karte die rote Linie erreicht, bleibt sie dort stehen.
-  const stickyCardX = Math.max(normalCardX, holdX);
+  for (let i = 0; i < processedSegments.length; i++) {
+    const segment = processedSegments[i];
+    const lines = getInstructionLines(segment, trackKey);
+    if (lines.length === 0) continue;
 
-  // Bereits vergangene Segmente laufen normal weiter nach links.
-  if (segmentIndex < currentSegmentIndex) {
-    return normalCardX;
+    const normalX = tickToX(segment.startTick, scrollBaseTick) + 8;
+    const segmentWidth = Math.max(80, Math.min(INSTRUCTION_CARD_WIDTH_PX, tickToX(segment.endTick, scrollBaseTick) - tickToX(segment.startTick, scrollBaseTick) - 14));
+    const offset = offsets[i] || 0;
+    let x = normalX + offset;
+
+    if (i >= currentSegmentIndex && currentSegmentIndex >= 0) {
+      x = Math.max(x, holdX);
+    }
+
+    entries.push({ index: i, x, normalX, width: segmentWidth });
   }
 
-  if (segmentIndex > currentSegmentIndex) {
-    return stickyCardX;
-  }
-
-  // SegmentIndex === currentSegmentIndex
-  // Aktuelle Anweisung an der roten Linie halten
-
-  // Zuerst Mindest-Haltefortschritt innerhalb des Segments erzwingen
-  const segmentDuration = Math.max(1, segment.endTick - segment.startTick);
-  const segmentProgress = (currentTick - segment.startTick) / segmentDuration;
-  if (segmentProgress < MIN_STICKY_PROGRESS_BEFORE_RELEASE) {
-    return stickyCardX;
-  }
-
-  // Danach Freigabe: wenn nächste Anweisung nahe genug ist, darf die aktuelle weiterziehen
-  const nextIndex = currentSegmentIndex + 1;
-  if (nextIndex < processedSegments.length) {
-    const nextNormalCardX = tickToX(processedSegments[nextIndex].startTick, scrollBaseTick) + 8;
-    const nextStickyCardX = Math.max(nextNormalCardX, holdX);
-    const distanceToNext = nextStickyCardX - stickyCardX;
-    if (distanceToNext <= STICKY_RELEASE_DISTANCE_PX) {
-      return normalCardX;
+  for (let idx = entries.length - 2; idx >= 0; idx--) {
+    const leftCard = entries[idx];
+    const rightCard = entries[idx + 1];
+    const maxAllowedX = rightCard.x - leftCard.width - CARD_GAP_PX;
+    if (leftCard.x > maxAllowedX) {
+      leftCard.x = maxAllowedX;
     }
   }
 
-  return stickyCardX;
+  for (const entry of entries) {
+    offsets[entry.index] = entry.x - entry.normalX;
+  }
+  instructionCardOffsetsByTrack[trackKey] = offsets;
+
+  const layoutBySegmentIndex = {};
+  for (const entry of entries) {
+    layoutBySegmentIndex[entry.index] = { x: entry.x };
+  }
+  return layoutBySegmentIndex;
 }
 
 function drawOverviewTrack() {
