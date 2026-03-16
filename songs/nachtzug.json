@@ -4,7 +4,7 @@
   "segments": [
     {
       "name": "Andocken",
-      "measures": 8,
+      "measures": 16,
       "timeSignature": "4/4",
       "tonart": "D-Moll",
       "tempo": 76,
@@ -17,10 +17,10 @@
     },
     {
       "name": "Tunnel",
-      "measures": 24,
-      "timeSignature": "5/4",
+      "measures": 16,
+      "timeSignature": "4/4",
       "tonart": "A-Dur",
-      "tempo": 128,
+      "tempo": 110,
       "instructions": {
         "all": ["Kontrast deutlich machen", "Klaren Puls behalten"],
         "Gregor": ["Pattern alle 5 Schläge wiederholen"],
@@ -30,10 +30,10 @@
     },
     {
       "name": "Panorama",
-      "measures": 12,
+      "measures": 16,
       "timeSignature": "4/4",
       "tonart": "F-Dur",
-      "tempo": 100,
+      "tempo": 110,
       "instructions": {
         "all": ["Klang aufhellen", "Gemeinsamen Schluss vorbereiten"],
         "Gregor": ["Melodische Leitstimme übernehmen"],
