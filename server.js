@@ -6,14 +6,24 @@ const dgram = require('dgram');
 
 const HTTP_PORT = 8080;
 const UDP_IN_PORT = 8099;
+const UDP_SONG_SELECT_PORT = 8100;
 const PD_HOST = '192.168.178.106';
 const PD_PORT = 8000;
 const SONGS_DIR = path.join(__dirname, 'songs');
 
 let songsById = new Map();
 let songList = [];
+let songIdByIndexNumber = new Map();
 let currentSongId = null;
 let latestTick = 0;
+
+function extractSongIndexNumber(songName) {
+  const match = String(songName || '').trim().match(/^(\d+)/);
+  if (!match) return null;
+
+  const numericIndex = parseInt(match[1], 10);
+  return Number.isNaN(numericIndex) ? null : numericIndex;
+}
 
 function readSongsFromDisk() {
   const files = fs
@@ -24,6 +34,7 @@ function readSongsFromDisk() {
 
   const loadedSongs = [];
   const loadedMap = new Map();
+  const loadedSongIdByIndexNumber = new Map();
 
   for (const fileName of files) {
     const filePath = path.join(SONGS_DIR, fileName);
@@ -45,10 +56,16 @@ function readSongsFromDisk() {
 
     loadedSongs.push({ id: song.id, name: song.name, fileName: song.fileName });
     loadedMap.set(id, song);
+
+    const songIndexNumber = extractSongIndexNumber(song.name);
+    if (songIndexNumber !== null) {
+      loadedSongIdByIndexNumber.set(songIndexNumber, song.id);
+    }
   }
 
   songsById = loadedMap;
   songList = loadedSongs;
+  songIdByIndexNumber = loadedSongIdByIndexNumber;
 
   if (!currentSongId || !songsById.has(currentSongId)) {
     currentSongId = songList.length > 0 ? songList[0].id : null;
@@ -111,6 +128,36 @@ udpInSocket.on('message', (msg, rinfo) => {
 });
 udpInSocket.bind(UDP_IN_PORT, () => {
   console.log(`Empfange Ticks via UDP auf Port ${UDP_IN_PORT}`);
+});
+
+const udpSongSelectSocket = dgram.createSocket('udp4');
+udpSongSelectSocket.on('message', (msg, rinfo) => {
+  const text = msg.toString().trim().replace(';', '');
+  const songIndex = parseInt(text, 10);
+  if (Number.isNaN(songIndex)) {
+    console.warn(`Ungültiger Song-Index via UDP von ${rinfo.address}:${rinfo.port}: ${text}`);
+    return;
+  }
+
+  const songId = songIdByIndexNumber.get(songIndex);
+  if (!songId || !songsById.has(songId)) {
+    console.warn(`Kein Song mit Index ${songIndex} gefunden.`);
+    return;
+  }
+
+  if (songId === currentSongId) {
+    latestTick = 0;
+    broadcastWS({ type: 'tick', data: { tick: latestTick, raw: '0' } });
+    return;
+  }
+
+  currentSongId = songId;
+  latestTick = 0;
+  broadcastWS({ type: 'songChanged', data: getStatePayload() });
+  console.log(`Aktiver Song via UDP gewechselt: ${songIndex} -> ${songId}`);
+});
+udpSongSelectSocket.bind(UDP_SONG_SELECT_PORT, () => {
+  console.log(`Empfange Songauswahl via UDP auf Port ${UDP_SONG_SELECT_PORT}`);
 });
 
 const udpOutSocket = dgram.createSocket('udp4');
