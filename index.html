@@ -87,6 +87,12 @@ let lastSegmentIndex = -1;
 let pixelsPerTick = 0.1;
 const instructionCardOffsetsByTrack = {};
 
+function resetInstructionCardPositions() {
+  for (const key of Object.keys(instructionCardOffsetsByTrack)) {
+    delete instructionCardOffsetsByTrack[key];
+  }
+}
+
 window.addEventListener('load', async () => {
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
@@ -132,7 +138,14 @@ function connectWebSocket() {
 
 function handleWsMessage(msg) {
   if (msg.type === 'tick') {
-    if (typeof msg.data?.tick === 'number') currentTick = msg.data.tick;
+    if (typeof msg.data?.tick === 'number') {
+      const nextTick = msg.data.tick;
+      if (nextTick === 0 && currentTick !== 0) {
+        resetInstructionCardPositions();
+        lastSegmentIndex = -1;
+      }
+      currentTick = nextTick;
+    }
     return;
   }
 
@@ -205,9 +218,7 @@ function getTrackDefs() {
 function prepareSegments() {
   processedSegments = [];
   trackDefs = getTrackDefs();
-  for (const key of Object.keys(instructionCardOffsetsByTrack)) {
-    delete instructionCardOffsetsByTrack[key];
-  }
+  resetInstructionCardPositions();
   if (!currentSong || !Array.isArray(currentSong.segments)) return;
 
   let startTick = 0;
