@@ -17,8 +17,9 @@ let songIdByIndexNumber = new Map();
 let currentSongId = null;
 let latestTick = 0;
 
-function extractSongIndexNumber(songName) {
-  const match = String(songName || '').trim().match(/^(\d+)/);
+function extractSongIndexNumberFromFileName(fileName) {
+  const baseName = path.basename(String(fileName || ''), '.json');
+  const match = baseName.match(/^(\d{2})(?:[^\d].*)?$/);
   if (!match) return null;
 
   const numericIndex = parseInt(match[1], 10);
@@ -57,9 +58,13 @@ function readSongsFromDisk() {
     loadedSongs.push({ id: song.id, name: song.name, fileName: song.fileName });
     loadedMap.set(id, song);
 
-    const songIndexNumber = extractSongIndexNumber(song.name);
+    const songIndexNumber = extractSongIndexNumberFromFileName(fileName);
     if (songIndexNumber !== null) {
       loadedSongIdByIndexNumber.set(songIndexNumber, song.id);
+    } else {
+      console.warn(
+        `Songdatei ${fileName} hat keinen gültigen zweistelligen Index am Dateianfang (z. B. 01_mein-song.json).`,
+      );
     }
   }
 

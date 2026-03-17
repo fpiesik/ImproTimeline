@@ -37,6 +37,9 @@ Songdateien liegen im Verzeichnis `songs/` und verwenden JSON.
 ## Hinweise
 
 - `name`: Anzeigename des Songs.
+- Dateinamen müssen mit einem **zweistelligen Index** beginnen (z. B. `01_stadtfahrt.json`, `12_nachtzug.json`).
+  - Dieser Dateiname-Index wird für die Songauswahl via UDP verwendet.
+  - UDP darf weiterhin normale Zahlen ohne führende Null senden (`1`, `2`, `12`).
 - `musicians`: Namen der Musiker als Objekte mit:
   - `name`: Anzeigename und Schlüssel für `instructions`.
   - `backgroundColor` (optional): Hintergrundfarbe der jeweiligen Track-Zeile (z. B. `#1e2a3d`).
