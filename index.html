@@ -166,14 +166,40 @@ function updateSongSelect() {
 }
 
 function getMusicians() {
+  const defaultMusicians = [
+    { name: 'Gregor', backgroundColor: '#1f242f' },
+    { name: 'Ali', backgroundColor: '#1f2f24' },
+    { name: 'Frank', backgroundColor: '#2f241f' },
+  ];
+
   if (!currentSong || !Array.isArray(currentSong.musicians) || currentSong.musicians.length === 0) {
-    return ['Gregor', 'Ali', 'Frank'];
+    return defaultMusicians;
   }
-  return currentSong.musicians;
+
+  return currentSong.musicians
+    .map((entry) => {
+      if (typeof entry === 'string') {
+        return { name: entry, backgroundColor: '#171717' };
+      }
+
+      if (entry && typeof entry === 'object' && typeof entry.name === 'string' && entry.name.trim() !== '') {
+        return {
+          name: entry.name,
+          backgroundColor: entry.backgroundColor || '#171717',
+        };
+      }
+
+      return null;
+    })
+    .filter(Boolean);
 }
 
 function getTrackDefs() {
-  return [{ label: 'Alle', key: 'all' }, ...getMusicians().map((name) => ({ label: name, key: name }))];
+  return getMusicians().map((musician) => ({
+    label: musician.name,
+    key: musician.name,
+    backgroundColor: musician.backgroundColor,
+  }));
 }
 
 function prepareSegments() {
@@ -209,10 +235,15 @@ function prepareSegments() {
 function normalizeInstructions(instructions) {
   const safe = instructions && typeof instructions === 'object' ? instructions : {};
   const normalized = { ...safe };
-  if (!Array.isArray(normalized.all)) normalized.all = [];
-  for (const musician of getMusicians()) {
-    if (!Array.isArray(normalized[musician])) normalized[musician] = [];
+
+  if (Array.isArray(safe.all) && trackDefs.some((track) => track.key === 'Alle') && !Array.isArray(normalized.Alle)) {
+    normalized.Alle = [...safe.all];
   }
+
+  for (const trackDef of trackDefs) {
+    if (!Array.isArray(normalized[trackDef.key])) normalized[trackDef.key] = [];
+  }
+
   return normalized;
 }
 
@@ -392,7 +423,7 @@ function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, pla
     const ex = tickToX(s.endTick, scrollBaseTick);
     if (ex < LEFT_MARGIN || sx > canvas.width - RIGHT_MARGIN) continue;
 
-    ctx.fillStyle = '#171717';
+    ctx.fillStyle = trackDef.backgroundColor || '#171717';
     ctx.fillRect(sx, trackY, ex - sx, trackHeight);
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 1;

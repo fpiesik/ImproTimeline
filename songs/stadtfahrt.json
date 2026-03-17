@@ -1,6 +1,11 @@
 {
   "name": "Stadtfahrt",
-  "musicians": ["Gregor", "Ali", "Frank"],
+  "musicians": [
+    { "name": "Alle", "backgroundColor": "#1d1d1d" },
+    { "name": "Gregor", "backgroundColor": "#1e2a3d" },
+    { "name": "Ali", "backgroundColor": "#1f3a2d" },
+    { "name": "Frank", "backgroundColor": "#3a2b1f" }
+  ],
   "segments": [
     {
       "name": "Intro",
@@ -9,7 +14,7 @@
       "tonart": "C-Dur",
       "tempo": 90,
       "instructions": {
-        "all": ["Ruhig beginnen", "Viel Raum lassen"],
+        "Alle": ["Ruhig beginnen", "Viel Raum lassen"],
         "Gregor": ["Nur lange Töne", "Voicings offen halten"],
         "Ali": ["Kurze Einwürfe", "Auf Gregor reagieren"],
         "Frank": ["Nur punktuelle Akzente"]
@@ -22,7 +27,7 @@
       "tonart": "E-Moll",
       "tempo": 112,
       "instructions": {
-        "all": ["Dynamik stetig steigern", "Phrasen klar abschließen"],
+        "Alle": ["Dynamik stetig steigern", "Phrasen klar abschließen"],
         "Gregor": ["Rhythmik dichter machen"],
         "Ali": ["Motive sequenzieren"],
         "Frank": ["Backbeat ab Takt 9 verstärken"]
@@ -35,7 +40,7 @@
       "tonart": "G-Dur",
       "tempo": 72,
       "instructions": {
-        "all": ["Klangfläche öffnen", "Tempo innerlich halten"],
+        "Alle": ["Klangfläche öffnen", "Tempo innerlich halten"],
         "Gregor": ["Sus-Akkorde halten"],
         "Ali": ["Nur Einzeltöne als Antworten"],
         "Frank": ["Textur statt Groove"]
