@@ -31,6 +31,31 @@
       padding: 6px 10px;
       min-width: 220px;
     }
+    .font-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      align-items: center;
+    }
+    .font-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .font-control label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .font-control input {
+      width: 68px;
+      min-height: 34px;
+      background: #2d2d2d;
+      color: #fff;
+      border: 1px solid #4a4a4a;
+      border-radius: 8px;
+      padding: 2px 8px;
+      font-size: 14px;
+    }
     #canvas {
       display: block;
       width: 100%;
@@ -44,6 +69,24 @@
 <div class="toolbar">
   <label for="songSelect">Song:</label>
   <select id="songSelect"></select>
+  <div class="font-controls">
+    <div class="font-control">
+      <label for="statusFontSize">Info</label>
+      <input id="statusFontSize" type="number" min="10" max="36" step="1"/>
+    </div>
+    <div class="font-control">
+      <label for="overviewFontSize">Übersicht</label>
+      <input id="overviewFontSize" type="number" min="10" max="36" step="1"/>
+    </div>
+    <div class="font-control">
+      <label for="cardFontSize">Karten</label>
+      <input id="cardFontSize" type="number" min="10" max="36" step="1"/>
+    </div>
+    <div class="font-control">
+      <label for="trackLabelFontSize">Spuren</label>
+      <input id="trackLabelFontSize" type="number" min="10" max="36" step="1"/>
+    </div>
+  </div>
 </div>
 <canvas id="canvas" width="1200" height="620"></canvas>
 
@@ -60,7 +103,14 @@ const OVERVIEW_RIGHT_MARGIN = 50;
 const MARGIN_COLOR = '#303030';
 const BACKGROUND_COLOR = '#202020';
 
-const LINE_HEIGHT = 21;
+const FONT_SETTING_KEY = 'improTimeline.fontSizes';
+const FONT_DEFAULTS = {
+  status: 18,
+  overview: 13,
+  card: 17,
+  trackLabel: 18,
+};
+
 const TRACK_PADDING_TOP = 10;
 const TRACK_PADDING_BOTTOM = 8;
 const TRACK_MIN_HEIGHT = 56;
@@ -86,6 +136,7 @@ let currentTick = 0;
 let lastSegmentIndex = -1;
 let pixelsPerTick = 0.1;
 const instructionCardOffsetsByTrack = {};
+let fontSizes = { ...FONT_DEFAULTS };
 
 function resetInstructionCardPositions() {
   for (const key of Object.keys(instructionCardOffsetsByTrack)) {
@@ -97,6 +148,7 @@ window.addEventListener('load', async () => {
   canvas = document.getElementById('canvas');
   ctx = canvas.getContext('2d');
   songSelect = document.getElementById('songSelect');
+  initializeFontSizeControls();
 
   songSelect.addEventListener('change', () => {
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
@@ -107,6 +159,67 @@ window.addEventListener('load', async () => {
   connectWebSocket();
   requestAnimationFrame(render);
 });
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function parseFontSizeValue(value, fallback) {
+  const numericValue = Number.parseInt(value, 10);
+  if (Number.isNaN(numericValue)) return fallback;
+  return clamp(numericValue, 10, 36);
+}
+
+function setCanvasFont(size, weight = 'normal') {
+  ctx.font = `${weight} ${size}px sans-serif`;
+}
+
+function getInstructionLineHeight() {
+  return Math.ceil(fontSizes.card * 1.25);
+}
+
+function persistFontSizes() {
+  localStorage.setItem(FONT_SETTING_KEY, JSON.stringify(fontSizes));
+}
+
+function loadFontSizes() {
+  try {
+    const saved = localStorage.getItem(FONT_SETTING_KEY);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    if (!parsed || typeof parsed !== 'object') return;
+
+    fontSizes = {
+      status: parseFontSizeValue(parsed.status, FONT_DEFAULTS.status),
+      overview: parseFontSizeValue(parsed.overview, FONT_DEFAULTS.overview),
+      card: parseFontSizeValue(parsed.card, FONT_DEFAULTS.card),
+      trackLabel: parseFontSizeValue(parsed.trackLabel, FONT_DEFAULTS.trackLabel),
+    };
+  } catch (_error) {
+    fontSizes = { ...FONT_DEFAULTS };
+  }
+}
+
+function initializeFontSizeControls() {
+  loadFontSizes();
+
+  const controls = [
+    { id: 'statusFontSize', key: 'status' },
+    { id: 'overviewFontSize', key: 'overview' },
+    { id: 'cardFontSize', key: 'card' },
+    { id: 'trackLabelFontSize', key: 'trackLabel' },
+  ];
+
+  for (const control of controls) {
+    const input = document.getElementById(control.id);
+    if (!input) continue;
+    input.value = String(fontSizes[control.key]);
+    input.addEventListener('input', () => {
+      fontSizes[control.key] = parseFontSizeValue(input.value, FONT_DEFAULTS[control.key]);
+      persistFontSizes();
+    });
+  }
+}
 
 async function loadSongs() {
   try {
@@ -265,11 +378,12 @@ function getInstructionLines(segment, trackKey) {
 }
 
 function getTrackHeight(trackDef) {
+  const lineHeight = getInstructionLineHeight();
   let maxLines = 1;
   for (const segment of processedSegments) {
     maxLines = Math.max(maxLines, getInstructionLines(segment, trackDef.key).length || 1);
   }
-  return Math.max(TRACK_MIN_HEIGHT, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + (maxLines * LINE_HEIGHT));
+  return Math.max(TRACK_MIN_HEIGHT, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + (maxLines * lineHeight));
 }
 
 function getCurrentBeatsPerMeasure() {
@@ -376,7 +490,7 @@ function render() {
   const info = getCurrentSegmentInfo(currentTick);
   const measureInfo = `Takt: ${info.currentMeasure}   Zählzeit: ${info.currentBeat}   Taktart: ${info.currTimeSig}   Tonart: ${info.currTonart}   Tempo: ${info.currTempo} BPM   Zeit: ${timeStr}   Fenster: ${VISIBLE_WINDOW_MEASURES} Takte`;
   ctx.fillStyle = '#fff';
-  ctx.font = '18px sans-serif';
+  setCanvasFont(fontSizes.status);
   ctx.textAlign = 'left';
   ctx.fillText(measureInfo, 20, 24);
 
@@ -426,6 +540,7 @@ function notifySegmentChange(segment) {
 }
 
 function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, playheadX, currentSegmentIndex) {
+  const lineHeight = getInstructionLineHeight();
   const cardLayouts = getInstructionCardLayouts(trackDef.key, scrollBaseTick, playheadX, currentSegmentIndex);
 
   for (let i = 0; i < processedSegments.length; i++) {
@@ -448,7 +563,7 @@ function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, pla
 
     const cardX = layout.x;
     const cardMaxWidth = Math.max(80, Math.min(INSTRUCTION_CARD_WIDTH_PX, ex - sx - 14));
-    const cardHeight = Math.min(trackHeight - 8, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + lines.length * LINE_HEIGHT);
+    const cardHeight = Math.min(trackHeight - 8, TRACK_PADDING_TOP + TRACK_PADDING_BOTTOM + lines.length * lineHeight);
     const cardY = trackY + 4;
 
     ctx.fillStyle = '#101010';
@@ -458,12 +573,12 @@ function drawInstructionTrack(scrollBaseTick, trackY, trackHeight, trackDef, pla
     ctx.strokeRect(cardX, cardY, cardMaxWidth, cardHeight);
 
     ctx.fillStyle = '#f3f3f3';
-    ctx.font = '17px sans-serif';
+    setCanvasFont(fontSizes.card);
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
 
     for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-      const textY = cardY + TRACK_PADDING_TOP + (lineIndex * LINE_HEIGHT);
+      const textY = cardY + TRACK_PADDING_TOP + (lineIndex * lineHeight);
       ctx.fillText(`• ${lines[lineIndex]}`, cardX + 8, textY, Math.max(40, cardMaxWidth - 16));
     }
   }
@@ -526,7 +641,7 @@ function drawOverviewTrack() {
 
   ctx.textAlign = 'center';
   ctx.textBaseline = 'bottom';
-  ctx.font = '13px sans-serif';
+  setCanvasFont(fontSizes.overview);
   ctx.fillStyle = '#fff';
 
   for (const s of processedSegments) {
@@ -576,7 +691,7 @@ function coverLeftRightMarginArea(topY, bottomY) {
 
 function drawTrackLabel(label, x, y) {
   ctx.fillStyle = '#d8d8d8';
-  ctx.font = '18px sans-serif';
+  setCanvasFont(fontSizes.trackLabel);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.fillText(label, x, y);
