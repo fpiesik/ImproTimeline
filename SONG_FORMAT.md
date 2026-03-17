@@ -7,7 +7,12 @@ Songdateien liegen im Verzeichnis `songs/` und verwenden JSON.
 ```json
 {
   "name": "Stadtfahrt",
-  "musicians": ["Gregor", "Ali", "Frank"],
+  "musicians": [
+    { "name": "Alle", "backgroundColor": "#1d1d1d" },
+    { "name": "Gregor", "backgroundColor": "#1e2a3d" },
+    { "name": "Ali", "backgroundColor": "#1f3a2d" },
+    { "name": "Frank", "backgroundColor": "#3a2b1f" }
+  ],
   "segments": [
     {
       "name": "Intro",
@@ -19,7 +24,7 @@ Songdateien liegen im Verzeichnis `songs/` und verwenden JSON.
       "aliRole": "Solo",
       "frankRole": "Beat",
       "instructions": {
-        "all": ["Ruhig beginnen", "Viel Raum lassen"],
+        "Alle": ["Ruhig beginnen", "Viel Raum lassen"],
         "Gregor": ["Nur lange Töne"],
         "Ali": ["Kurze Einwürfe"],
         "Frank": ["Nur punktuelle Akzente"]
@@ -32,10 +37,14 @@ Songdateien liegen im Verzeichnis `songs/` und verwenden JSON.
 ## Hinweise
 
 - `name`: Anzeigename des Songs.
-- `musicians`: Namen der Musiker; steuern Rollen-Spuren und individuelle Anweisungsbereiche.
+- `musicians`: Namen der Musiker als Objekte mit:
+  - `name`: Anzeigename und Schlüssel für `instructions`.
+  - `backgroundColor` (optional): Hintergrundfarbe der jeweiligen Track-Zeile (z. B. `#1e2a3d`).
+- Die frühere Sonderkategorie `all` gibt es nicht mehr automatisch.
+  - Wenn eine globale Spur gewünscht ist, füge in `musicians` einen Eintrag mit `name: "Alle"` hinzu.
+  - Die passenden Anweisungen stehen dann unter `instructions.Alle`.
 - `segments`: Liste der Songsegmente.
 - Pro Segment bleiben musikalische Basisdaten erhalten (`measures`, `timeSignature`, `tonart`, `tempo`, Rollenfelder).
-- `instructions.all`: globale Anweisungen für alle.
 - `instructions.<Musikername>`: individuelle Anweisungen passend zu `musicians`.
 
 ## Technische Umsetzung

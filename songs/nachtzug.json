@@ -1,6 +1,11 @@
 {
   "name": "Nachtzug",
-  "musicians": ["Gregor", "Ali", "Frank"],
+  "musicians": [
+    { "name": "Alle", "backgroundColor": "#1d1d1d" },
+    { "name": "Gregor", "backgroundColor": "#1e2a3d" },
+    { "name": "Ali", "backgroundColor": "#1f3a2d" },
+    { "name": "Frank", "backgroundColor": "#3a2b1f" }
+  ],
   "segments": [
     {
       "name": "Andocken",
@@ -9,7 +14,7 @@
       "tonart": "D-Moll",
       "tempo": 76,
       "instructions": {
-        "all": ["Leise starten", "Lücken bewusst stehen lassen"],
+        "Alle": ["Leise starten", "Lücken bewusst stehen lassen"],
         "Gregor": ["Pedalton auf D halten"],
         "Ali": ["Nur Offbeat-Figuren"],
         "Frank": ["Geräuschhafte Klänge nutzen"]
@@ -22,7 +27,7 @@
       "tonart": "A-Dur",
       "tempo": 110,
       "instructions": {
-        "all": ["Kontrast deutlich machen", "Klaren Puls behalten"],
+        "Alle": ["Kontrast deutlich machen", "Klaren Puls behalten"],
         "Gregor": ["Pattern alle 5 Schläge wiederholen"],
         "Ali": ["Lange Linien über den Takt ziehen"],
         "Frank": ["Akkordwechsel sparsam setzen"]
@@ -35,7 +40,7 @@
       "tonart": "F-Dur",
       "tempo": 110,
       "instructions": {
-        "all": ["Klang aufhellen", "Gemeinsamen Schluss vorbereiten"],
+        "Alle": ["Klang aufhellen", "Gemeinsamen Schluss vorbereiten"],
         "Gregor": ["Melodische Leitstimme übernehmen"],
         "Ali": ["Antworten auf Gregor im oberen Register"],
         "Frank": ["Groove erst in der zweiten Hälfte öffnen"]
