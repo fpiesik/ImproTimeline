@@ -1,0 +1,89 @@
+{
+  "name": "Nebelflug",
+  "musicians": [
+    { "name": "Alle", "backgroundColor": "#1d1d1d" },
+    { "name": "Ali", "backgroundColor": "#1f3a2d" },
+    { "name": "Gregor", "backgroundColor": "#1e2a3d" },
+    { "name": "Frank", "backgroundColor": "#3a2b1f" }
+  ],
+  "segments": [
+    {
+      "name": "Startrampe",
+      "measures": 16,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [""],
+        "Gregor": ["Pause"],
+        "Ali": ["Pause"],
+        "Frank": ["Fläche auf Csus4","langsamer Übergang von Fläche zu Arpeggio"]
+      }
+    },
+    {
+      "name": "Beschleunigen",
+      "measures": 32,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [""],
+        "Ali": ["4tel Puls (Drums)", "Basston C auf 1"],
+        "Gregor": ["Propeller langsam einsetzen", "Propeller über den Teil beschleunigen"],
+        "Frank": ["Csus4 weiter verdichten", "Arpeggio beschleunigen" ]
+      }
+    },
+    {
+      "name": "Blindflug",
+      "measures": 32,
+      "timeSignature": "4/4",
+      "tonart": "E",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Ali": ["80's style DrumBeat", "Pulsierender Bass" ],
+        "Gregor": ["Akkordfolge auf C mit 4 taktigem Wechsel"],
+        "Frank": ["Nach C-Dur auflösen", "Single Tone fast Kickup"]
+      }
+    },
+    {
+      "name": "Absturz",
+      "measures": 8,
+      "timeSignature": "4/4",
+      "tonart": "E",
+      "tempo": 90,
+      "instructions": {
+        "Alle": ["Geräuschhafter werden","Von schnell bis langsam verlaufende Modulationen"],
+        "Ali": [""],
+        "Gregor": [""],
+        "Frank": [""]
+      }
+    },
+    {
+      "name": "Aufprall",
+      "measures": 16,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [""],
+        "Ali": ["Geräuschhaft"],
+        "Gregor": ["Schrill"],
+        "Frank": ["Tief, schwer"]
+      }
+    },
+    {
+      "name": "Outro",
+      "measures": 2,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": ["Ausklingen"],
+        "Ali": [""],
+        "Gregor": [""],
+        "Frank": [""]
+      }
+    }
+  ]
+}

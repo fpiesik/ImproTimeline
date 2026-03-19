@@ -1,0 +1,63 @@
+{
+  "name": "Nachtzug",
+  "musicians": [
+    { "name": "Alle", "backgroundColor": "#1d1d1d" },
+    { "name": "Gregor", "backgroundColor": "#1e2a3d" },
+    { "name": "Ali", "backgroundColor": "#1f3a2d" },
+    { "name": "Frank", "backgroundColor": "#3a2b1f" }
+  ],
+  "segments": [
+    {
+      "name": "Andocken",
+      "measures": 16,
+      "timeSignature": "4/4",
+      "tonart": "D-Moll",
+      "tempo": 76,
+      "instructions": {
+        "Alle": ["Leise starten", "Lücken bewusst stehen lassen","Grundton:D"],
+        "Gregor": ["Pedalton auf D halten"],
+        "Ali": ["Nur Offbeat-Figuren"],
+        "Frank": ["Geräuschhafte Klänge nutzen"]
+      }
+    },
+    {
+      "name": "Tunnel",
+      "measures": 16,
+      "timeSignature": "4/4",
+      "tonart": "A-Dur",
+      "tempo": 110,
+      "instructions": {
+        "Alle": ["Kontrast deutlich machen", "Klaren Puls behalten"],
+        "Gregor": ["Pattern alle 5 Schläge wiederholen"],
+        "Ali": ["Lange Linien über den Takt ziehen"],
+        "Frank": ["Akkordwechsel sparsam setzen"]
+      }
+    },
+    {
+      "name": "Panorama",
+      "measures": 16,
+      "timeSignature": "4/4",
+      "tonart": "F-Dur",
+      "tempo": 110,
+      "instructions": {
+        "Alle": ["Klang aufhellen", "Gemeinsamen Schluss vorbereiten"],
+        "Gregor": ["Melodische Leitstimme übernehmen"],
+        "Ali": ["Antworten auf Gregor im oberen Register"],
+        "Frank": ["Groove erst in der zweiten Hälfte öffnen"]
+      }
+    },
+        {
+      "name": "Parkdeck",
+      "measures": 16,
+      "timeSignature": "4/4",
+      "tonart": "F-Dur",
+      "tempo": 110,
+      "instructions": {
+        "Alle": ["Klang aufhellen", "Gemeinsamen Schluss vorbereiten"],
+        "Gregor": ["Melodische Leitstimme übernehmen"],
+        "Ali": ["Antworten auf Gregor im oberen Register"],
+        "Frank": ["Groove erst in der zweiten Hälfte öffnen"]
+      }
+    }
+  ]
+}
