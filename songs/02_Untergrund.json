@@ -1,0 +1,102 @@
+{
+  "name": "Untergrund",
+  "musicians": [
+    { "name": "Alle", "backgroundColor": "#1d1d1d" },
+    { "name": "Ali", "backgroundColor": "#1f3a2d" },
+    { "name": "Gregor", "backgroundColor": "#1e2a3d" },
+    { "name": "Frank", "backgroundColor": "#3a2b1f" }
+  ],
+  "segments": [
+    {
+      "name": "Abstieg",
+      "measures": 32,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Gregor": [],
+        "Ali": ["Start auf hohem Ton, langsamer absietg","Absteigend-Treppe-Rhythmus"],
+        "Frank": []
+      }
+    },
+    {
+      "name": "Angekommen",
+      "measures": 32,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Ali": ["voller Rhytmus"],
+        "Gregor": ["Propeller-Drone"],
+        "Frank": []
+      }
+    },
+    {
+      "name": "Erkundung",
+      "measures": 32,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Ali": [],
+        "Gregor": [],
+        "Frank": ["Sporadische lange Töne","Modulierend"]
+      }
+    },
+    {
+      "name": "Entdeckung",
+      "measures": 32,
+      "timeSignature": "4/4",
+      "tonart": "E",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Ali": ["Beat setzt ein"],
+        "Gregor": ["Arpeggio"],
+        "Frank": ["Puls-Melodie"]
+      }
+    },
+    {
+      "name": "Flucht",
+      "measures": 32,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": ["Distorted", "Schnell","Noise"],
+        "Ali": [],
+        "Gregor": [],
+        "Frank": []
+      }
+    },
+    {
+      "name": "Tod",
+      "measures": 2,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": ["Pause"],
+        "Ali": [],
+        "Gregor": [],
+        "Frank": []
+      }
+    },
+   {
+      "name": "Aufstieg",
+      "measures": 32,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Ali": ["Hochfahren","Rhythmus wie Abstieg"],
+        "Gregor": [],
+        "Frank": []
+      }
+    }
+  ]
+}

@@ -14,10 +14,10 @@
       "tonart": "C",
       "tempo": 90,
       "instructions": {
-        "Alle": [""],
+        "Alle": [],
         "Gregor": ["Pause"],
         "Ali": ["Pause"],
-        "Frank": ["Fläche auf Csus4","langsamer Übergang von Fläche zu Arpeggio"]
+        "Frank": ["Fläche auf Csus4","langsamer Übergang von Fläche zu Arpeggio","hier steht was"]
       }
     },
     {
@@ -27,7 +27,7 @@
       "tonart": "C",
       "tempo": 90,
       "instructions": {
-        "Alle": [""],
+        "Alle": [],
         "Ali": ["4tel Puls (Drums)", "Basston C auf 1"],
         "Gregor": ["Propeller langsam einsetzen", "Propeller über den Teil beschleunigen"],
         "Frank": ["Csus4 weiter verdichten", "Arpeggio beschleunigen" ]
