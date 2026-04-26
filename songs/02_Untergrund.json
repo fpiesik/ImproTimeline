@@ -22,7 +22,7 @@
     },
     {
       "name": "Angekommen",
-      "measures": 32,
+      "measures": 64,
       "timeSignature": "4/4",
       "tonart": "C",
       "tempo": 90,
@@ -35,7 +35,7 @@
     },
     {
       "name": "Erkundung",
-      "measures": 32,
+      "measures": 64,
       "timeSignature": "4/4",
       "tonart": "C",
       "tempo": 90,
@@ -48,7 +48,7 @@
     },
     {
       "name": "Entdeckung",
-      "measures": 32,
+      "measures": 64,
       "timeSignature": "4/4",
       "tonart": "E",
       "tempo": 90,
@@ -61,7 +61,7 @@
     },
     {
       "name": "Flucht",
-      "measures": 32,
+      "measures": 64,
       "timeSignature": "4/4",
       "tonart": "C",
       "tempo": 90,
@@ -74,7 +74,7 @@
     },
     {
       "name": "Tod",
-      "measures": 2,
+      "measures": 4,
       "timeSignature": "4/4",
       "tonart": "C",
       "tempo": 90,
