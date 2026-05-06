@@ -1,0 +1,102 @@
+{
+  "name": "Superbooth",
+  "musicians": [
+    { "name": "Alle", "backgroundColor": "#1d1d1d" },
+    { "name": "Ali", "backgroundColor": "#1f3a2d" },
+    { "name": "Gregor", "backgroundColor": "#1e2a3d" },
+    { "name": "Frank", "backgroundColor": "#3a2b1f" }
+  ],
+  "segments": [
+    {
+      "name": "Abstieg",
+      "measures": 64,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Gregor": ["Ali begleiten"],
+        "Ali": ["Start auf hohem Ton, langsamer absietg"],
+        "Frank": ["Ali begleiten"]
+      }
+    },
+    {
+      "name": "Angekommen",
+      "measures": 128,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Ali": ["voller Rhytmus"],
+        "Gregor": ["Propeller-Drone"],
+        "Frank": ["Sporadische lange Töne"]
+      }
+    },
+    {
+      "name": "Erkundung",
+      "measures": 128,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+"Ali": ["Gregor übernimmt"],
+        "Gregor": ["Gregor begleiten"],
+        "Frank": ["Gregor begleiten"]
+      }
+    },
+    {
+      "name": "Entdeckung",
+      "measures": 128,
+      "timeSignature": "4/4",
+      "tonart": "E",
+      "tempo": 90,
+      "instructions": {
+        "Alle": [],
+        "Ali": ["Frank begleiten,", "Bass Tonal","4 to Floor"],
+        "Gregor": ["Frank begleiten","Wenig Harmoniewechsel"],
+        "Frank": ["Frank uebernimmt"]
+      }
+    },
+    {
+      "name": "Flucht",
+      "measures": 128,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": ["Distorted", "Schnell","Noise"],
+        "Ali": ["Pulsierend"],
+        "Gregor": ["DroneWall"],
+        "Frank": ["KickiupPunnch"]
+      }
+    },
+    {
+      "name": "Tod",
+      "measures": 128,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": ["Langsam, viel Luft, Klang wirkt"],
+        "Ali": [],
+        "Gregor": [],
+        "Frank": []
+      }
+    },
+   {
+      "name": "Aufstieg",
+      "measures": 128,
+      "timeSignature": "4/4",
+      "tonart": "C",
+      "tempo": 90,
+      "instructions": {
+        "Alle": ["Harmonisch, rhythmisch Straight"],
+        "Ali": ["steigern bis Schluss"],
+        "Gregor": ["steigern bis Schluss"],
+        "Frank": ["steigern bis Schluss"]
+      }
+    }
+  ]
+}
